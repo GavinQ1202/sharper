@@ -189,7 +189,7 @@ v0.1 规则固定且可单测：重复行、全缺失、缺失率阈值、常量
 
 ### 5.3 分析挖掘
 
-- 数值：分位数、偏度、零值率、IQR/MAD 异常值摘要。
+- 数值：分位数、偏度、零值率、Task 07 冻结的 IQR 异常值摘要。
 - 类别：频数、比例、稀有水平与截断后的 top categories。
 - 关联：数值 Pearson/Spearman；类别-类别和混合类型指标推迟，v0.1 可在 target 分析中提供有限的合适统计量。
 - 分组比较：一个或多个数值列按一个类别列分组，返回 count、missing count、mean、median 和分位数；最多展示 20 个组，超限时按频数截断并披露。v0.1 不支持多重 group key 或透视表 DSL。
@@ -289,7 +289,8 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 `docs/decisions/task03-schema-summary-contract.md`；Task 04 的冻结合同见
 `docs/decisions/task04-quality-contract.md`；Task 05 的冻结合同见
 `docs/decisions/task05-workflow-report-cli-contract.md`；Task 06 的冻结合同见
-`docs/decisions/task06-excel-io-contract.md`。实现、测试和 API 文档不得
+`docs/decisions/task06-excel-io-contract.md`；Task 07 的冻结合同见
+`docs/decisions/task07-analysis-contract.md`。实现、测试和 API 文档不得
 偏离对应记录。
 
 结果类型不在 Task 01 预先冻结，而是在拥有相应功能的 Task 中与行为、测试和文档一起冻结：
@@ -298,6 +299,8 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 - `DataFrameSummary` 在 Task 03 的 `summarize_dataframe` 实现中冻结。
 - `QualityReport` 及 `QualityIssue` 已由 Task 04 API 决策记录冻结，并在
   `check_data_quality` 实现中首次提供。
+- `NumericAnalysis`、`CategoricalAnalysis`、`CorrelationAnalysis` 和
+  `OutlierAnalysis` 在 Task 07 冻结。
 - 其他结果类型在 `IMPLEMENTATION_PLAN.md` 指定的对应功能 Task 中冻结。
 
 v0.1 不定义公共自定义异常体系，也不创建 `exceptions.py`。文件不存在、不可读或读取失败使用保留底层因果链的 `OSError`；无效参数、缺失列、非法列类型及其他用户输入错误使用可操作消息的 `ValueError`。若未来需要公共自定义异常，必须通过 v0.2 或单独的 SPEC 修改评审后引入。
@@ -395,8 +398,23 @@ def analyze_categorical_features(
     df: pd.DataFrame,
     *,
     columns: Sequence[str] | None = None,
-    top_n: int = 20,
+    top_n: int = 10,
 ) -> CategoricalAnalysis: ...
+def compute_correlations(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    method: str = "pearson",
+    max_columns: int = 50,
+    min_periods: int = 2,
+) -> CorrelationAnalysis: ...
+def detect_outliers(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    method: str = "iqr",
+    threshold: float = 1.5,
+) -> OutlierAnalysis: ...
 def analyze_target_relationships(
     df: pd.DataFrame,
     target: str,
@@ -404,19 +422,6 @@ def analyze_target_relationships(
     task: Literal["classification", "regression"],
     features: Sequence[str] | None = None,
 ) -> TargetAnalysis: ...
-def compute_correlations(
-    df: pd.DataFrame,
-    *,
-    columns: Sequence[str] | None = None,
-    method: Literal["pearson", "spearman"] = "pearson",
-    min_periods: int = 2,
-) -> CorrelationAnalysis: ...
-def detect_outliers(
-    df: pd.DataFrame,
-    *,
-    columns: Sequence[str] | None = None,
-    method: Literal["iqr", "mad"] = "iqr",
-) -> OutlierAnalysis: ...
 def compare_groups(
     df: pd.DataFrame,
     group_by: str,
@@ -455,7 +460,24 @@ def compare_groups(
   只适用于 categorical schema，要求 `unique_count > 50` 且
   `unique_rate > 0.50`。各规则的分母、边界、互斥、稳定文本和排序以
   Task 04 决策记录为准。
-- 所有函数验证列存在且适合任务；无可分析列时返回带 skipped reasons 的空结果，不伪造统计量。
+- Task 07 只实现 non-target feature analysis：numeric feature analysis、
+  categorical feature analysis、numeric pairwise correlations 和 numeric
+  outlier detection。Task 07 不做 target relationship、grouped analysis、
+  feature engineering、visualization、modeling、evaluation、reporting、
+  workflow 或 CLI integration。
+- `NumericAnalysis`、`CategoricalAnalysis`、`CorrelationAnalysis` 和
+  `OutlierAnalysis` 的 dataclass 字段、输出表 schema、skipped reason
+  vocabulary、错误行为和 deterministic ordering 以
+  `docs/decisions/task07-analysis-contract.md` 为准。
+- Task 07 的所有 analysis 函数验证列存在且适合任务；无可分析列时返回带
+  skipped reasons 的空结果，不伪造统计量。`columns=None` 基于 pandas
+  dtype 自动选择列，不调用 `infer_schema`、`summarize_dataframe` 或
+  `check_data_quality`。
+- Task 07 的 correlation 使用 long-form pairwise table，默认
+  `method="pearson"`、`max_columns=50`、`min_periods=2`；Task 07 不返回
+  p-values 或 heatmap。
+- Task 07 的 outlier detection 只支持 IQR method，默认
+  `threshold=1.5`；不删除异常值，不修改输入。
 - `analyze_target_relationships` 要求 target 无歧义且 task 显式；不会训练模型。
 - `compare_groups` v0.1 仅支持一个类别分组列和数值 value 列；高基数组按频数截断并披露。
 - 统计结果保留有效样本量和缺失处理说明，不修改输入且无外部副作用。
@@ -650,7 +672,7 @@ Task 13 的 CLI 才默认执行 schema、摘要、质量、单变量分析、相
 | `schema` | 各逻辑类型、nullable dtype、混合值、ID 候选、target 候选、重复列、空表、确定性 | 单元，`test_schema.py` | 角色、置信度与理由符合夹具 |
 | `summary` | 形状、内存、缺失、唯一值、分位数、空行/全缺失/常量 | 单元，`test_summary.py` | 计数与 pandas 基准一致 |
 | `quality` | 每条规则、阈值边界、严重度、重复、inf、高基数、无静默修改 | 参数化单元，`test_quality.py` | issue code 与证据稳定 |
-| `analysis` | 数值/类别统计、top-N、Pearson/Spearman、IQR/MAD、分类/回归 target、NaN、常量、小样本 | 单元/数值，`test_analysis.py` | 与手算或 scipy 基准容差内一致 |
+| `analysis` | 数值/类别统计、top-N、Pearson/Spearman、IQR outliers、分类/回归 target、NaN、常量、小样本 | 单元/数值，`test_analysis.py` | 与手算或 scipy 基准容差内一致 |
 | 分组比较 | 单分组列、缺失组、超 20 组截断、非法 value、多 key 拒绝 | 单元，`test_analysis.py` | 统计正确且截断被披露 |
 | `features` | 每种建议、预算、去重、排除 target/ID、除零、日期、列名冲突、确定性、拒绝需 fit suggestion | 单元/性质，`test_features.py` | 无泄漏输入且不组合爆炸，返回应用/跳过/警告 |
 | `visualization` | 每个任务函数、Figure 类型、图数量/采样上限、标签、空/常量/高基数、无 `show()`、Figure 清理、禁止重算 | headless 单元/视觉结构，`test_visualization.py` | Agg backend 下稳定，不泄漏 Figure，预算元数据完整 |

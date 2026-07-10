@@ -1,6 +1,7 @@
 """Smoke tests for the public import contract."""
 
 import inspect
+from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -16,7 +17,7 @@ def test_version_contract() -> None:
 
 
 def test_all_contains_only_implemented_public_api() -> None:
-    """The package exports only APIs implemented through Task 05."""
+    """The package exports only APIs implemented through Task 07."""
     assert sharper.__all__ == [
         "__version__",
         "load_csv",
@@ -34,6 +35,14 @@ def test_all_contains_only_implemented_public_api() -> None:
         "run_analysis",
         "ReportArtifact",
         "generate_analysis_report",
+        "NumericAnalysis",
+        "CategoricalAnalysis",
+        "CorrelationAnalysis",
+        "OutlierAnalysis",
+        "analyze_numeric_features",
+        "analyze_categorical_features",
+        "compute_correlations",
+        "detect_outliers",
     ]
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
@@ -228,3 +237,116 @@ def test_task05_function_signatures_and_typing() -> None:
     }
     assert sharper.run_analysis.__doc__
     assert sharper.generate_analysis_report.__doc__
+
+
+def test_task07_function_signatures_and_typing() -> None:
+    """Non-target analysis functions expose their frozen signatures and hints."""
+    contracts = {
+        sharper.analyze_numeric_features: (
+            ["df", "columns"],
+            {"columns": None},
+            {
+                "df": pd.DataFrame,
+                "columns": Sequence[str] | None,
+                "return": sharper.NumericAnalysis,
+            },
+        ),
+        sharper.analyze_categorical_features: (
+            ["df", "columns", "top_n"],
+            {"columns": None, "top_n": 10},
+            {
+                "df": pd.DataFrame,
+                "columns": Sequence[str] | None,
+                "top_n": int,
+                "return": sharper.CategoricalAnalysis,
+            },
+        ),
+        sharper.compute_correlations: (
+            ["df", "columns", "method", "max_columns", "min_periods"],
+            {
+                "columns": None,
+                "method": "pearson",
+                "max_columns": 50,
+                "min_periods": 2,
+            },
+            {
+                "df": pd.DataFrame,
+                "columns": Sequence[str] | None,
+                "method": str,
+                "max_columns": int,
+                "min_periods": int,
+                "return": sharper.CorrelationAnalysis,
+            },
+        ),
+        sharper.detect_outliers: (
+            ["df", "columns", "method", "threshold"],
+            {"columns": None, "method": "iqr", "threshold": 1.5},
+            {
+                "df": pd.DataFrame,
+                "columns": Sequence[str] | None,
+                "method": str,
+                "threshold": float,
+                "return": sharper.OutlierAnalysis,
+            },
+        ),
+    }
+
+    for function, (names, defaults, expected_hints) in contracts.items():
+        signature = inspect.signature(function)
+        assert list(signature.parameters) == names
+        assert (
+            signature.parameters["df"].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
+        )
+        for parameter, default in defaults.items():
+            assert (
+                signature.parameters[parameter].kind is inspect.Parameter.KEYWORD_ONLY
+            )
+            assert signature.parameters[parameter].default == default
+        hints = get_type_hints(function)
+        assert hints == expected_hints
+        assert function.__doc__
+
+
+def test_task07_dataclass_fields_are_frozen() -> None:
+    """Task 07 result dataclasses contain exactly the frozen fields."""
+    common_hints = {
+        "n_rows": int,
+        "requested_columns": tuple[str, ...] | None,
+        "analyzed_columns": tuple[str, ...],
+        "skipped_columns": tuple[str, ...],
+        "skipped_reasons": dict[str, str],
+    }
+    contracts = {
+        sharper.NumericAnalysis: {
+            **common_hints,
+            "summary": pd.DataFrame,
+        },
+        sharper.CategoricalAnalysis: {
+            **common_hints,
+            "top_n": int,
+            "summary": pd.DataFrame,
+            "top_categories": pd.DataFrame,
+        },
+        sharper.CorrelationAnalysis: {
+            **common_hints,
+            "method": str,
+            "max_columns": int,
+            "min_periods": int,
+            "truncated": bool,
+            "correlations": pd.DataFrame,
+        },
+        sharper.OutlierAnalysis: {
+            **common_hints,
+            "method": str,
+            "threshold": float,
+            "summary": pd.DataFrame,
+            "outliers": pd.DataFrame,
+        },
+    }
+
+    for result_type, expected_hints in contracts.items():
+        assert is_dataclass(result_type)
+        assert result_type.__dataclass_params__.frozen is True
+        assert [field.name for field in fields(result_type)] == list(expected_hints)
+        assert get_type_hints(result_type) == expected_hints
+        assert result_type.__doc__

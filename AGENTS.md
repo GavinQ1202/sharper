@@ -39,6 +39,7 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 - Task 04 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task04-quality-contract.md`；改变冻结字段、code、severity、规则、阈值、文本或排序前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。
 - Task 05 实现、测试、Markdown 和 CLI 文档必须遵守已接受的 `docs/decisions/task05-workflow-report-cli-contract.md`；改变冻结字段、签名、章节、文本、参数、输出通道或 exit code 前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。
 - Task 06 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task06-excel-io-contract.md`；改变 `load_excel` 签名、`.xlsx` 单 sheet 范围、`read_options` 白名单、optional dependency、错误类型或稳定消息前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 06 不修改 CLI、workflow 或 reporting。
+- Task 07 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task07-analysis-contract.md`；改变 analysis 函数签名、结果 dataclass 字段、输出表 schema、skipped reason codes/precedence、错误消息、排序或 non-target 范围前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 07 不修改 CLI、workflow 或 reporting，不实现 target relationship、grouped analysis、visualization、feature engineering、modeling 或 evaluation。
 - v0.1 默认以 `OSError` 表示文件读取失败，以 `ValueError` 表示无效参数、缺失列和非法列类型等用户输入错误；没有单独 SPEC 修改不得新增公共自定义异常体系。
 - `analytics-workflow-builder` 最早可用于 Task 03 或 Task 04，不用于 Task 01 或 Task 02。
 - `feature-engineering-builder` 不用于 Task 01、Task 02、Task 03 或 Task 04；仅在 `IMPLEMENTATION_PLAN.md` 进入 feature engineering Task 后使用。

@@ -526,15 +526,27 @@ load_excel(
 
 ---
 
-### Task 07 — 单变量分析、相关性与异常值
+### Task 07 — Non-target feature analysis
 
 **目标**
 
-实现 v0.1 核心非 target 分析，超越简单 `describe()`，并遵守固定计算预算。
+实现 v0.1 核心 non-target feature analysis，超越简单 `describe()`，并遵守
+固定计算预算。Task 07 只包含 numeric feature analysis、categorical
+feature analysis、numeric pairwise correlations 和 numeric outlier
+detection；不修改 CLI、workflow 或 reporting。
+
+**API 决策记录**
+
+必须遵守 `docs/decisions/task07-analysis-contract.md`。该记录冻结
+Task 07 的四个 public function 签名、四个 result dataclass 字段、
+输出表 schema、skipped reason vocabulary 与 precedence、错误行为、
+deterministic ordering、public export 和测试合同。若实现需要改变这些行为，
+必须先同步评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。
 
 **依赖**
 
-Task 03。
+Task 03。Task 07 基于 pandas dtype 自动选择列，不调用 `infer_schema`、
+`summarize_dataframe` 或 `check_data_quality`。
 
 **创建/修改文件**
 
@@ -547,13 +559,39 @@ Task 03。
 **Public API**
 
 ```python
-analyze_numeric_features(...) -> NumericAnalysis
-analyze_categorical_features(...) -> CategoricalAnalysis
-compute_correlations(...) -> CorrelationAnalysis
-detect_outliers(...) -> OutlierAnalysis
+analyze_numeric_features(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+) -> NumericAnalysis
+
+analyze_categorical_features(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    top_n: int = 10,
+) -> CategoricalAnalysis
+
+compute_correlations(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    method: str = "pearson",
+    max_columns: int = 50,
+    min_periods: int = 2,
+) -> CorrelationAnalysis
+
+detect_outliers(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    method: str = "iqr",
+    threshold: float = 1.5,
+) -> OutlierAnalysis
 ```
 
-签名必须与 `SPEC.md` 完全一致。
+签名和 `NumericAnalysis`、`CategoricalAnalysis`、`CorrelationAnalysis`
+与 `OutlierAnalysis` 的字段必须与 Task 07 决策记录完全一致。
 
 **测试文件**
 
@@ -562,19 +600,39 @@ detect_outliers(...) -> OutlierAnalysis
 
 **pytest 覆盖点**
 
-- 数值分位数、偏度、零值率和有效样本量。
-- 类别频数、比例、稀有水平、top-20 与截断披露。
-- Pearson/Spearman、`min_periods`、50 列预算和稳定列顺序。
-- IQR/MAD 异常值、边界值、NaN、inf、常量和小样本。
-- columns 缺失、类型不适用、空选择和零列。
-- 与手算、pandas、SciPy 基准在明确容差内一致。
-- 无可分析列时返回 skipped reasons，不伪造统计量。
+- public API exports、签名、result dataclass frozen behavior 和字段顺序。
+- shared input validation：non-DataFrame、非字符串 DataFrame column names、
+  重复 DataFrame column names、missing requested column、重复 requested
+  column、非字符串 requested column 和输入不变性。
+- Numeric analysis：自动选择 numeric non-boolean columns、显式 columns
+  顺序、跳过 non-numeric/all-missing、固定 summary columns/dtypes、
+  `zero_count`/`zero_rate` 和空结果 schema。
+- Categorical analysis：自动选择 object/string/category/bool columns、显式
+  columns 顺序、跳过 numeric/all-missing、非法 `top_n`、固定
+  summary/top_categories columns/dtypes、`top_n` budget 和 first-appearance
+  tie break。
+- Correlation：自动选择 numeric non-boolean columns、显式 columns 顺序、
+  非法 method/`max_columns`/`min_periods`、跳过
+  non-numeric/all-missing/constant/insufficient columns、`max_columns`
+  truncation、`exceeds_max_columns`、long-form pair order、`n_pairs`、
+  `min_periods`、无 diagonal rows 和空结果 schema。
+- Outlier detection：只支持 `iqr`、非法 `threshold`、跳过
+  non-numeric/all-missing/constant/insufficient/non-finite columns、IQR
+  lower/upper bound、summary/outliers schema、原始 `row_index` label、
+  deterministic ordering 和无 outlier 空结果 schema。
+- Task 01-06 回归测试仍通过，且无 workflow/reporting/CLI changes。
 
 **验收标准**
 
-- 所有结果记录有效样本量、缺失处理、截断和 skipped reasons。
+- 所有结果记录有效样本量、缺失处理、截断和 skipped reasons，且只使用
+  决策记录冻结的 skipped reason codes 与 precedence。
+- 所有输出表的 columns、dtypes 和 deterministic ordering 与决策记录一致。
 - 不删除异常值，不修改输入。
-- workflow 可接入结果而无需改变 public result contract。
+- 不实现 target relationship analysis、grouped analysis、feature
+  engineering、visualization、modeling、evaluation、report generation、
+  workflow integration、CLI integration、automatic cleaning、data mutation 或
+  custom exceptions。
+- workflow 可在后续任务接入结果而无需改变 public result contract。
 
 ---
 

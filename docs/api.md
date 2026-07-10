@@ -116,3 +116,90 @@ does not embed a `SchemaReport`, `DataFrameSummary`, timestamp, path, or random
 identifier. Full fields, thresholds, evidence semantics, messages, and
 mutual-exclusion rules follow the frozen
 [Task 04 contract](decisions/task04-quality-contract.md).
+
+## Non-target feature analysis
+
+Task 07 adds four independent analysis functions. They require a pandas
+DataFrame with unique string column names, preserve explicit column order, and
+never mutate the input. With `columns=None`, each function selects applicable
+columns by pandas dtype in original DataFrame order; it does not call schema
+inference, summary, or quality APIs.
+
+```python
+from sharper import (
+    analyze_categorical_features,
+    analyze_numeric_features,
+    compute_correlations,
+    detect_outliers,
+)
+
+numeric = analyze_numeric_features(frame)
+categorical = analyze_categorical_features(frame, top_n=10)
+correlations = compute_correlations(
+    frame,
+    method="pearson",
+    max_columns=50,
+    min_periods=2,
+)
+outliers = detect_outliers(frame, method="iqr", threshold=1.5)
+```
+
+`NumericAnalysis` has fields `n_rows`, `requested_columns`,
+`analyzed_columns`, `skipped_columns`, `skipped_reasons`, and `summary`.
+Its summary columns are, in order: `column`, `count`, `missing_count`,
+`missing_rate`, `mean`, `std`, `min`, `q25`, `median`, `q75`, `max`, `skew`,
+`zero_count`, and `zero_rate`. Numeric selection excludes boolean dtypes.
+Statistics use pandas sample standard deviation, quantile interpolation, and
+skew defaults. Infinity is retained; missing values are excluded, and
+`zero_rate` uses the non-missing count as its denominator.
+
+`CategoricalAnalysis` has fields `n_rows`, `requested_columns`,
+`analyzed_columns`, `skipped_columns`, `skipped_reasons`, `top_n`, `summary`,
+and `top_categories`. It selects object, string, category, and boolean dtypes.
+The summary columns are `column`, `count`, `missing_count`, `missing_rate`,
+`unique_count`, `unique_rate`, `top`, `top_count`, and `top_rate`.
+`top_categories` uses `column`, `category`, `count`, `rate`, and `rank`.
+Missing values do not participate in category frequencies. Frequencies sort by
+descending count, with ties resolved by first appearance in the original
+column; `top_n` is a per-column display budget.
+
+`CorrelationAnalysis` has fields `n_rows`, `requested_columns`,
+`analyzed_columns`, `skipped_columns`, `skipped_reasons`, `method`,
+`max_columns`, `min_periods`, `truncated`, and `correlations`. Its long-form
+table columns are `column_a`, `column_b`, `method`, `correlation`, and
+`n_pairs`. Pearson and Spearman are supported. The function first applies dtype,
+all-missing, effective-sample, and constant checks, then retains the first
+`max_columns` eligible columns. Excess eligible columns receive
+`exceeds_max_columns`, and `truncated` becomes true. Each unordered pair appears
+once in analyzed-column order; pairs below `min_periods` or with a pandas `NaN`
+coefficient are omitted. There are no diagonal rows, p-values, or heatmaps.
+
+`OutlierAnalysis` has fields `n_rows`, `requested_columns`,
+`analyzed_columns`, `skipped_columns`, `skipped_reasons`, `method`, `threshold`,
+`summary`, and `outliers`. Its summary columns are `column`, `method`,
+`threshold`, `lower_bound`, `upper_bound`, `outlier_count`, and `outlier_rate`.
+Detail columns are `column`, `row_index`, `value`, `lower_bound`, and
+`upper_bound`. Task 07 supports IQR only: bounds use pandas' default quartiles,
+and strict comparisons identify outliers. Missing values are excluded; a column
+containing either infinity is skipped. Detail rows preserve original index
+labels and DataFrame row order. Values are reported but never removed or
+cleaned.
+
+All four results are frozen dataclasses. The only skipped reason codes are
+`not_numeric`, `not_categorical`, `all_missing`, `constant`,
+`insufficient_non_missing`, `non_finite_values`, and `exceeds_max_columns`, as
+applicable. Precedence is:
+
+- numeric: `not_numeric` then `all_missing`;
+- categorical: `not_categorical` then `all_missing`;
+- correlation: `not_numeric`, `all_missing`, `insufficient_non_missing`,
+  `constant`, then `exceeds_max_columns`;
+- outliers: `not_numeric`, `all_missing`, `non_finite_values`,
+  `insufficient_non_missing`, then `constant`.
+
+Full field types, fixed table dtypes, validation messages, missing-value
+semantics, and ordering rules follow the frozen
+[Task 07 contract](decisions/task07-analysis-contract.md). Task 07 does not add
+target or group analysis, feature engineering, visualization, modeling,
+evaluation, report generation, workflow integration, CLI integration, data
+cleaning, or custom exceptions.

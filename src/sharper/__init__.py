@@ -1,5 +1,15 @@
 """Sharper's public package interface."""
 
+from sharper.analysis import (
+    CategoricalAnalysis,
+    CorrelationAnalysis,
+    NumericAnalysis,
+    OutlierAnalysis,
+    analyze_categorical_features,
+    analyze_numeric_features,
+    compute_correlations,
+    detect_outliers,
+)
 from sharper.io import load_csv, load_excel
 from sharper.quality import QualityIssue, QualityReport, check_data_quality
 from sharper.reporting import ReportArtifact, generate_analysis_report
@@ -26,4 +36,12 @@ __all__ = [
     "run_analysis",
     "ReportArtifact",
     "generate_analysis_report",
+    "NumericAnalysis",
+    "CategoricalAnalysis",
+    "CorrelationAnalysis",
+    "OutlierAnalysis",
+    "analyze_numeric_features",
+    "analyze_categorical_features",
+    "compute_correlations",
+    "detect_outliers",
 ]
