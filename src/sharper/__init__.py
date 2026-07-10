@@ -1,6 +1,6 @@
 """Sharper's public package interface."""
 
-from sharper.io import load_csv
+from sharper.io import load_csv, load_excel
 from sharper.quality import QualityIssue, QualityReport, check_data_quality
 from sharper.reporting import ReportArtifact, generate_analysis_report
 from sharper.schema import ColumnSchema, SchemaReport, TargetCandidate, infer_schema
@@ -12,6 +12,7 @@ __version__ = "0.1.0"
 __all__ = [
     "__version__",
     "load_csv",
+    "load_excel",
     "ColumnSchema",
     "TargetCandidate",
     "SchemaReport",

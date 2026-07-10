@@ -19,6 +19,45 @@ defaults. File-system failures raise `OSError`; empty or malformed input and
 invalid parameters raise `ValueError`. Wrapped failures retain their original
 exception as `__cause__`.
 
+## Excel input
+
+```python
+from sharper import load_excel
+
+frame = load_excel("data.xlsx", sheet_name=0, usecols=["name", "score"])
+```
+
+`load_excel(path, *, sheet_name=0, **read_options)` reads one sheet from a
+local `.xlsx` file into a `pandas.DataFrame`. Install the optional Excel extra
+before using it:
+
+```bash
+pip install "sharper[excel]"
+```
+
+For editable source installs:
+
+```bash
+python -m pip install -e ".[excel]"
+```
+
+Task 06 supports `str` and `pathlib.Path` paths, and `sheet_name` as a sheet
+name or zero-based integer index. It rejects `None`, collections, and any
+multi-sheet mode so the return value is always one DataFrame. Supported read
+options are `header`, `names`, `usecols`, `dtype`, `na_values`,
+`keep_default_na`, `skiprows`, and `nrows`. The engine is fixed to `openpyxl`
+and cannot be overridden.
+
+The loader preserves pandas' parsed column names and values, does not clean or
+coerce data, and does not run schema inference, summary, quality checks,
+workflow, reporting, visualization, or modeling. Task 06 does not add Excel
+CLI support; `sharper analyze input.xlsx` is future workflow/CLI work.
+
+Invalid path types, non-`.xlsx` suffixes, invalid sheet names, unsupported
+read options, missing sheets, and pandas parser failures raise `ValueError`
+with the stable Task 06 messages. Missing files and directory paths raise
+`OSError`. Missing `openpyxl` raises `ImportError` with installation guidance.
+
 ## Schema inference
 
 ```python

@@ -20,6 +20,7 @@ def test_all_contains_only_implemented_public_api() -> None:
     assert sharper.__all__ == [
         "__version__",
         "load_csv",
+        "load_excel",
         "ColumnSchema",
         "TargetCandidate",
         "SchemaReport",
@@ -50,6 +51,24 @@ def test_load_csv_public_contract() -> None:
         "return": pd.DataFrame,
     }
     assert sharper.load_csv.__doc__
+
+
+def test_load_excel_public_contract() -> None:
+    """The public Excel loader has the documented signature and typing."""
+    signature = inspect.signature(sharper.load_excel)
+    assert list(signature.parameters) == ["path", "sheet_name", "read_options"]
+    assert signature.parameters["sheet_name"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["sheet_name"].default == 0
+    assert signature.parameters["read_options"].kind is inspect.Parameter.VAR_KEYWORD
+
+    hints = get_type_hints(sharper.load_excel)
+    assert hints == {
+        "path": str | Path,
+        "sheet_name": str | int,
+        "read_options": Any,
+        "return": pd.DataFrame,
+    }
+    assert sharper.load_excel.__doc__
 
 
 def test_task03_function_signatures_and_typing() -> None:

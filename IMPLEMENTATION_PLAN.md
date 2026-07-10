@@ -38,15 +38,15 @@ v0.1 的分发契约冻结为：distribution name `sharper`、import name `sharp
 5. 运行并通过：
 
    ```bash
-   python -m pytest
-   python -m ruff check .
-   python -m ruff format --check .
+   .venv/bin/python -m pytest
+   .venv/bin/python -m ruff check .
+   .venv/bin/python -m ruff format --check .
    ```
 
 6. 涉及打包、CLI、public exports 或发布时，额外运行：
 
    ```bash
-   python -m build
+   .venv/bin/python -m build
    ```
 
 7. 若任务依赖的前置任务尚未合并，不得通过临时重复实现绕开依赖。
@@ -451,11 +451,21 @@ sharper analyze INPUT --output report.md
 
 ---
 
-### Task 06 — Excel 单表读取
+### Task 06 — Excel single-sheet I/O
 
 **目标**
 
 补齐 v0.1 第二种输入格式，保持 Excel 引擎为 optional dependency。
+Task 06 只提供 Python API 读取本地 `.xlsx` 单 sheet，不修改 CLI、
+workflow 或 reporting。
+
+**API 决策记录**
+
+必须遵守 `docs/decisions/task06-excel-io-contract.md`。该记录冻结
+`load_excel` 签名、`.xlsx` 单 sheet 范围、`read_options` 白名单、
+optional `excel` extra、错误类型和稳定消息、public export 以及测试
+合同。若实现需要改变这些行为，必须先同步评审该记录、`SPEC.md` 和
+`IMPLEMENTATION_PLAN.md`。
 
 **依赖**
 
@@ -490,16 +500,29 @@ load_excel(
 **pytest 覆盖点**
 
 - 默认首个 sheet、按名称和索引选择 sheet。
-- 缺失 sheet、坏文件、缺失文件和非法路径。
-- 未安装 Excel extra 时的明确安装提示。
+- `sheet_name=None` 以及 list、tuple、set 必须拒绝。
+- 非 `.xlsx` 后缀、缺失 sheet、坏文件、缺失文件、目录和非法路径。
+- 未安装 Excel extra 时抛出 `ImportError`，消息包含
+  `Install sharper[excel] to read Excel files`。
 - 不支持多 sheet 返回 dict；该用法必须拒绝。
+- `read_options` 仅允许 `header`、`names`、`usecols`、`dtype`、
+  `na_values`、`keep_default_na`、`skiprows`、`nrows`。
+- `sheet_name` 是显式 keyword-only 参数，不属于 `read_options` 合同；
+  Python duplicate-keyword `TypeError` 不是 Sharper public error
+  contract，也不要求测试。
+- `read_options` 中的 `engine` 必须以稳定消息拒绝。
+- 不调用 `infer_schema`、`summarize_dataframe` 或 `check_data_quality`。
 - CSV-only 核心安装仍可导入和运行。
 
 **验收标准**
 
-- 安装 `excel` extra 后能读取一个 `.xlsx` sheet。
+- 安装 `excel` extra 后能读取一个本地 `.xlsx` 单 sheet 并返回
+  `pd.DataFrame`，保留 pandas 原始列名和值。
 - 未安装 extra 不影响包导入、CSV 或其他功能。
 - 不增加多表联合分析能力。
+- 不修改 `src/sharper/cli.py`、`src/sharper/workflow.py` 或
+  `src/sharper/reporting.py`；不实现 Excel CLI、workflow/reporting
+  集成、schema、summary、quality、清洗、写入或 HTML。
 
 ---
 

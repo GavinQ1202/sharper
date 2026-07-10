@@ -31,15 +31,19 @@ v0.1 会刻意限制算法、候选数量和图表类型，以优先保证正确
 
 ## 当前可用能力
 
-Tasks 01–05 已完成：包骨架、CSV 读取、schema/summary、minimal data
-quality API 与最薄 Markdown CLI 已可用：
+Tasks 01–06 已完成：包骨架、CSV 读取、Excel Python API 读取、
+schema/summary、minimal data quality API 与最薄 Markdown CLI 已可用：
 
 ```bash
 sharper analyze data.csv --output report.md
 ```
 
-Task 05 只运行 CSV → schema → summary → quality → Markdown。HTML、完整
-分析、特征、绘图和建模仍是后续任务。
+Task 05 CLI 只运行 CSV → schema → summary → quality → Markdown。HTML、
+完整分析、特征、绘图和建模仍是后续任务。
+
+Python API `load_excel` 可通过 optional `excel` extra 读取本地 `.xlsx`
+单 sheet。Excel 输入的 `sharper analyze input.xlsx` CLI 支持仍是后续完整
+workflow/CLI 任务。
 
 ## 未来完整工作流（占位）
 
@@ -53,11 +57,13 @@ from sharper import (
     generate_analysis_report,
     infer_schema,
     load_csv,
+    load_excel,
     run_analysis,
     suggest_feature_derivations,
 )
 
 df = load_csv("data.csv")
+excel_df = load_excel("data.xlsx", sheet_name=0)
 schema = infer_schema(df)
 suggestions = suggest_feature_derivations(df, schema=schema)
 
@@ -107,9 +113,12 @@ python -m pip install -e ".[dev]"
 ```
 
 Sharper 支持 Python 3.10+，使用 `src` layout。运行时依赖为 pandas、
-NumPy、SciPy、scikit-learn、matplotlib 和 Typer；Excel 支持是可选依赖：
+NumPy、SciPy、scikit-learn、matplotlib 和 Typer；Excel Python API 支持
+使用可选依赖：
 
 ```bash
+pip install "sharper[excel]"
+# 或源码 editable 安装：
 python -m pip install -e ".[excel]"
 ```
 

@@ -288,8 +288,9 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 结果类型均为公开、只读倾向的 dataclass；具体字段可在实现前的小型 API 决策记录中冻结。函数默认不修改输入。Task 03 的冻结合同见
 `docs/decisions/task03-schema-summary-contract.md`；Task 04 的冻结合同见
 `docs/decisions/task04-quality-contract.md`；Task 05 的冻结合同见
-`docs/decisions/task05-workflow-report-cli-contract.md`。实现、测试和 API
-文档不得偏离对应记录。
+`docs/decisions/task05-workflow-report-cli-contract.md`；Task 06 的冻结合同见
+`docs/decisions/task06-excel-io-contract.md`。实现、测试和 API 文档不得
+偏离对应记录。
 
 结果类型不在 Task 01 预先冻结，而是在拥有相应功能的 Task 中与行为、测试和文档一起冻结：
 
@@ -325,6 +326,11 @@ def summarize_dataframe(
 ```
 
 - `load_*` 读取单一本地表，不修改列；文件缺失、解析错误和不支持参数以具因果链的 `OSError`/`ValueError` 报告。Excel 未安装 extra 时给出明确安装提示。唯一副作用是文件读取。
+- Task 06 的 `load_excel` 只承诺本地 `.xlsx` 单 sheet 读取，使用
+  optional `excel` extra 中的 `openpyxl`，返回 `pd.DataFrame`，拒绝
+  多 sheet 返回、`engine` 覆盖和未冻结的 pandas `read_excel` 参数。
+  Task 06 不做 schema、summary、quality、workflow、reporting 或 CLI
+  集成；`sharper analyze` 的 Excel 支持推迟到 Task 13。
 - `ColumnSchema` 字段冻结为 `name`、`pandas_dtype`、`logical_type`、
   `nullable`、`missing_count`、`missing_rate`、`unique_count`、
   `unique_rate`、`is_constant`、`is_id_like`、`confidence`、`reasons`。
@@ -595,6 +601,10 @@ Task 05 的参数、默认值、help 最小内容、stdout/stderr 和 exit code 
 `load_csv`、`run_analysis` 和 `generate_analysis_report`，不直接组合领域
 步骤或写 Markdown。
 
+Task 06 只新增 Python API `load_excel`，不修改 Task 05 CLI。Task 06
+完成后，`sharper analyze INPUT` 仍不接受 `.xlsx` 作为已支持输入；Excel
+CLI 支持属于 Task 13 完整 workflow/CLI 收口。
+
 以下是 Task 13 完成后的完整 CLI，不属于 Task 05：
 
 ```text
@@ -622,7 +632,7 @@ Task 13 的 CLI 才默认执行 schema、摘要、质量、单变量分析、相
 - `[project]`：分发名 `sharper`、描述、README、MIT license、作者、分类器、`requires-python = ">=3.10"` 和以 `sharper.__version__` 为单一来源的初始版本 `0.1.0`。
 - 核心依赖：pandas、numpy、scikit-learn、matplotlib、seaborn、scipy、typer。可视化是 v0.1 核心能力，因此 seaborn 不拆分为 optional extra。版本下界应在首次实现与 CI 验证后确定，不凭空锁定。
 - `[project.optional-dependencies]`：
-  - `excel`：openpyxl，用于 `.xlsx`；
+  - `excel`：openpyxl，用于 Task 06 冻结的 `.xlsx` 单 sheet 读取；
   - `dev`：pytest、pytest-cov、ruff、build；
 - v0.1 HTML 使用标准库和内部受控静态模板，不增加 renderer 依赖；复杂主题和 Markdown 扩展推迟。
 - `[project.scripts]`：`sharper = "sharper.cli:app"`，仅在 Task 05 创建 `cli.py` 时加入；Task 01 不配置不存在的 CLI 入口。
