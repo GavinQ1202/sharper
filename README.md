@@ -31,15 +31,21 @@ v0.1 会刻意限制算法、候选数量和图表类型，以优先保证正确
 
 ## 当前可用能力
 
-Tasks 01–06 已完成：包骨架、CSV 读取、Excel Python API 读取、
-schema/summary、minimal data quality API 与最薄 Markdown CLI 已可用：
+Tasks 01–08 已完成：包骨架、CSV/Excel Python API 读取、schema/summary、
+minimal data quality API、最薄 Markdown CLI，以及独立的 non-target numeric、
+categorical、correlation、outlier、group comparison 和 classification/regression
+target relationship Python APIs 已可用：
 
 ```bash
 sharper analyze data.csv --output report.md
 ```
 
-Task 05 CLI 只运行 CSV → schema → summary → quality → Markdown。HTML、
-完整分析、特征、绘图和建模仍是后续任务。
+Task 05 CLI 仍只运行 CSV → schema → summary → quality → Markdown。Task 07
+non-target analysis 尚未接入 workflow、reporting 或 CLI。
+
+Task 08 的 group comparison 与 classification/regression target relationship
+仅作为独立 Python API 提供，尚未接入 workflow、reporting 或 CLI。完整集成
+留给 Task 13。HTML、特征、绘图和建模仍是后续任务。
 
 Python API `load_excel` 可通过 optional `excel` extra 读取本地 `.xlsx`
 单 sheet。Excel 输入的 `sharper analyze input.xlsx` CLI 支持仍是后续完整
@@ -103,8 +109,9 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 
 ## 当前状态
 
-**状态：v0.1 实现中。** 当前已完成 Tasks 01–05。本文“未来完整工作流”中的 HTML、
-分析、特征、绘图和建模示例暂不可运行。
+**状态：v0.1 实现中。** 当前已完成 Tasks 01–08。本文“未来完整工作流”中的
+HTML、特征、绘图和建模示例暂不可运行，Tasks 07–08 analysis 也尚未接入完整
+workflow/CLI。
 
 从源码安装开发环境：
 

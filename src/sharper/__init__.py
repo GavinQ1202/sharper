@@ -3,10 +3,14 @@
 from sharper.analysis import (
     CategoricalAnalysis,
     CorrelationAnalysis,
+    GroupComparison,
     NumericAnalysis,
     OutlierAnalysis,
+    TargetAnalysis,
     analyze_categorical_features,
     analyze_numeric_features,
+    analyze_target_relationships,
+    compare_groups,
     compute_correlations,
     detect_outliers,
 )
@@ -44,4 +48,8 @@ __all__ = [
     "analyze_categorical_features",
     "compute_correlations",
     "detect_outliers",
+    "GroupComparison",
+    "TargetAnalysis",
+    "compare_groups",
+    "analyze_target_relationships",
 ]

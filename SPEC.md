@@ -290,8 +290,9 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 `docs/decisions/task04-quality-contract.md`；Task 05 的冻结合同见
 `docs/decisions/task05-workflow-report-cli-contract.md`；Task 06 的冻结合同见
 `docs/decisions/task06-excel-io-contract.md`；Task 07 的冻结合同见
-`docs/decisions/task07-analysis-contract.md`。实现、测试和 API 文档不得
-偏离对应记录。
+`docs/decisions/task07-analysis-contract.md`；Task 08 的冻结合同见
+`docs/decisions/task08-group-target-analysis-contract.md`。实现、测试和 API
+文档不得偏离对应记录。
 
 结果类型不在 Task 01 预先冻结，而是在拥有相应功能的 Task 中与行为、测试和文档一起冻结：
 
@@ -301,6 +302,7 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
   `check_data_quality` 实现中首次提供。
 - `NumericAnalysis`、`CategoricalAnalysis`、`CorrelationAnalysis` 和
   `OutlierAnalysis` 在 Task 07 冻结。
+- `GroupComparison` 和 `TargetAnalysis` 在 Task 08 冻结。
 - 其他结果类型在 `IMPLEMENTATION_PLAN.md` 指定的对应功能 Task 中冻结。
 
 v0.1 不定义公共自定义异常体系，也不创建 `exceptions.py`。文件不存在、不可读或读取失败使用保留底层因果链的 `OSError`；无效参数、缺失列、非法列类型及其他用户输入错误使用可操作消息的 `ValueError`。若未来需要公共自定义异常，必须通过 v0.2 或单独的 SPEC 修改评审后引入。
@@ -478,9 +480,33 @@ def compare_groups(
   p-values 或 heatmap。
 - Task 07 的 outlier detection 只支持 IQR method，默认
   `threshold=1.5`；不删除异常值，不修改输入。
-- `analyze_target_relationships` 要求 target 无歧义且 task 显式；不会训练模型。
-- `compare_groups` v0.1 仅支持一个类别分组列和数值 value 列；高基数组按频数截断并披露。
-- 统计结果保留有效样本量和缺失处理说明，不修改输入且无外部副作用。
+- Task 08 的完整冻结合同见
+  `docs/decisions/task08-group-target-analysis-contract.md`。
+  `GroupComparison` 和 `TargetAnalysis` 均为 `dataclass(frozen=True)`；字段、
+  输出表 columns/dtypes、skipped reason vocabulary/precedence、errors、预算和
+  deterministic ordering 以该记录为准。
+- `compare_groups` v0.1 仅支持一个 categorical group key 和 numeric value
+  columns；默认最多 20 个 groups，按频数和首次出现顺序截断并披露。
+- Task 08 的 numeric target/value/feature 必须是 real numeric non-boolean；
+  complex 不进入 Task 08 numeric 路径。该收缩使用 Task 08 专用 private
+  predicate，不改变 Task 07 numeric dtype 合同。
+- `analyze_target_relationships` 要求 target 无歧义且 task 显式；固定四条路径
+  为 classification × numeric Kruskal-Wallis、classification × categorical
+  Chi-square/Cramér's V、regression × numeric Pearson、regression ×
+  categorical Kruskal-Wallis。它不会训练模型。
+- Task 08 target analysis 固定最多 50 个 eligible features、每个
+  categorical feature 最多 20 个 categories、classification target 最多
+  20 个 classes。categorical feature category budget 只基于 target/feature
+  complete cases；超限 feature 整体跳过，不截断 category 或创建 Other。
+- Task 08 固定内部 `TASK08_MIN_GROUP_SIZE=2`，只用于 classification × numeric
+  和 regression × categorical 的 Kruskal-Wallis group retention；它不是参数，
+  也不进入 result metadata。SciPy statistic、p-value 或 effect size 非有限时，
+  feature 使用 `statistical_test_not_applicable`。
+- Task 08 limitations 使用决策记录冻结的封闭 vocabulary 和确定顺序。统计结果
+  保留 retained 有效样本量、缺失处理和探索性限制。
+- Task 08 不修改输入且无外部副作用，不接入 workflow、reporting、CLI 或
+  I/O，也不改变 Task 07 non-target analysis 合同；Task 08 不调用 Task 07
+  public analysis functions。
 - 接受标准小型 DataFrame 时，结果中的计数、排序、相关系数和异常标记必须可重复。
 
 ### 10.3 特征与可视化

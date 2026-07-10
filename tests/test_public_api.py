@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Any, get_type_hints
+from typing import Any, Literal, get_type_hints
 
 import pandas as pd
 
@@ -17,7 +17,7 @@ def test_version_contract() -> None:
 
 
 def test_all_contains_only_implemented_public_api() -> None:
-    """The package exports only APIs implemented through Task 07."""
+    """The package exports only APIs implemented through Task 08."""
     assert sharper.__all__ == [
         "__version__",
         "load_csv",
@@ -43,6 +43,10 @@ def test_all_contains_only_implemented_public_api() -> None:
         "analyze_categorical_features",
         "compute_correlations",
         "detect_outliers",
+        "GroupComparison",
+        "TargetAnalysis",
+        "compare_groups",
+        "analyze_target_relationships",
     ]
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
@@ -344,6 +348,101 @@ def test_task07_dataclass_fields_are_frozen() -> None:
         },
     }
 
+    for result_type, expected_hints in contracts.items():
+        assert is_dataclass(result_type)
+        assert result_type.__dataclass_params__.frozen is True
+        assert [field.name for field in fields(result_type)] == list(expected_hints)
+        assert get_type_hints(result_type) == expected_hints
+        assert result_type.__doc__
+
+
+def test_task08_function_signatures_and_typing() -> None:
+    """Group and target APIs expose exactly the frozen Task 08 signatures."""
+    group_signature = inspect.signature(sharper.compare_groups)
+    assert list(group_signature.parameters) == [
+        "df",
+        "group_by",
+        "values",
+        "max_groups",
+    ]
+    assert (
+        group_signature.parameters["group_by"].kind
+        is inspect.Parameter.POSITIONAL_OR_KEYWORD
+    )
+    assert group_signature.parameters["values"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert (
+        group_signature.parameters["max_groups"].kind is inspect.Parameter.KEYWORD_ONLY
+    )
+    assert group_signature.parameters["values"].default is None
+    assert group_signature.parameters["max_groups"].default == 20
+    assert get_type_hints(sharper.compare_groups) == {
+        "df": pd.DataFrame,
+        "group_by": str,
+        "values": Sequence[str] | None,
+        "max_groups": int,
+        "return": sharper.GroupComparison,
+    }
+
+    target_signature = inspect.signature(sharper.analyze_target_relationships)
+    assert list(target_signature.parameters) == ["df", "target", "task", "features"]
+    assert (
+        target_signature.parameters["target"].kind
+        is inspect.Parameter.POSITIONAL_OR_KEYWORD
+    )
+    assert target_signature.parameters["task"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert target_signature.parameters["task"].default is inspect.Parameter.empty
+    assert (
+        target_signature.parameters["features"].kind is inspect.Parameter.KEYWORD_ONLY
+    )
+    assert target_signature.parameters["features"].default is None
+    assert get_type_hints(sharper.analyze_target_relationships) == {
+        "df": pd.DataFrame,
+        "target": str,
+        "task": Literal["classification", "regression"],
+        "features": Sequence[str] | None,
+        "return": sharper.TargetAnalysis,
+    }
+    assert sharper.compare_groups.__doc__
+    assert sharper.analyze_target_relationships.__doc__
+
+
+def test_task08_dataclass_fields_are_frozen() -> None:
+    """Task 08 result dataclasses contain exactly the frozen fields and hints."""
+    contracts = {
+        sharper.GroupComparison: {
+            "n_rows": int,
+            "group_by": str,
+            "requested_values": tuple[str, ...] | None,
+            "analyzed_values": tuple[str, ...],
+            "skipped_values": tuple[str, ...],
+            "skipped_reasons": dict[str, str],
+            "max_groups": int,
+            "available_group_count": int,
+            "displayed_group_count": int,
+            "missing_group_count": int,
+            "truncated": bool,
+            "truncation_reason": str | None,
+            "summary": pd.DataFrame,
+        },
+        sharper.TargetAnalysis: {
+            "n_rows": int,
+            "target": str,
+            "task": str,
+            "requested_features": tuple[str, ...] | None,
+            "analyzed_features": tuple[str, ...],
+            "skipped_features": tuple[str, ...],
+            "skipped_reasons": dict[str, str],
+            "max_features": int,
+            "max_categories": int,
+            "available_feature_count": int,
+            "truncated": bool,
+            "truncation_reason": str | None,
+            "numeric_details": pd.DataFrame,
+            "category_details": pd.DataFrame,
+            "statistical_tests": pd.DataFrame,
+            "limitations": tuple[str, ...],
+        },
+    }
     for result_type, expected_hints in contracts.items():
         assert is_dataclass(result_type)
         assert result_type.__dataclass_params__.frozen is True

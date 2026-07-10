@@ -203,3 +203,55 @@ semantics, and ordering rules follow the frozen
 target or group analysis, feature engineering, visualization, modeling,
 evaluation, report generation, workflow integration, CLI integration, data
 cleaning, or custom exceptions.
+
+## Group and target relationship analysis
+
+Task 08 adds two independent Python APIs without changing workflow, reporting,
+CLI, or I/O:
+
+```python
+from sharper import analyze_target_relationships, compare_groups
+
+groups = compare_groups(frame, "segment", values=["revenue"], max_groups=20)
+target = analyze_target_relationships(
+    frame,
+    "outcome",
+    task="classification",
+)
+```
+
+`compare_groups(df, group_by, *, values=None, max_groups=20)` accepts one
+categorical group key and real numeric non-boolean values. Complex columns are
+not selected automatically and are rejected when explicitly requested. Missing group keys are
+excluded and disclosed. Groups rank by descending row frequency with
+first-appearance tie breaking; the first `max_groups` are retained without an
+Other bucket. `GroupComparison` records requested, analyzed, and skipped values,
+group counts, missing-group count, truncation metadata, and a fixed long-form
+`summary` table with `value`, `group`, `group_count`, `count`, `missing_count`,
+`mean`, `q25`, `median`, and `q75`.
+
+`analyze_target_relationships(df, target, *, task, features=None)` requires an
+explicit classification or regression task. Classification uses Kruskal-Wallis
+for numeric features and Chi-square with Cramer's V for categorical features.
+Regression uses Pearson correlation for real numeric features and Kruskal-Wallis
+for categorical features. Complex features are skipped as unsupported, and a
+complex regression target is rejected before dispatch. Kruskal paths retain only groups with at least two complete
+observations. The fixed budgets are 50 eligible features, 20 complete-case
+categories per categorical feature, and 20 classification target classes.
+
+`TargetAnalysis.numeric_details` uses `feature`, `target_category`,
+`group_count`, `count`, `missing_count`, `mean`, `q25`, `median`, and `q75`.
+`category_details` uses only `feature`, `feature_category`, `target_category`,
+`count`, `rate`, `target_mean`, and `target_median`. `statistical_tests` uses
+`feature`, `feature_kind`, `analysis`, `n_obs`, `group_count`, `statistic`,
+`p_value`, `effect_size`, `effect_size_name`, and `limitation`. Empty tables keep
+the same columns and dtypes.
+
+All results are deterministic frozen dataclasses. Missing values are handled by
+the path-specific complete-case rules, numeric infinity skips a feature, and
+inapplicable tests emit a structured skipped reason rather than a NaN result row.
+P-values are exploratory and unadjusted; no significance label, ranking, causal
+claim, model, plot, cleaning, or post-hoc test is produced. Complete field types,
+schemas, budgets, skipped-reason precedence, stable errors, and limitation codes
+follow the frozen
+[Task 08 contract](decisions/task08-group-target-analysis-contract.md).

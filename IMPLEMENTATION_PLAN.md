@@ -642,6 +642,15 @@ detect_outliers(
 
 补齐普通分组比较，以及分类/回归两条明确分离的 target relationship 分析路径。
 
+**API 决策记录**
+
+必须遵守 `docs/decisions/task08-group-target-analysis-contract.md`。该记录冻结
+Task 08 的两个 public function 签名、两个 frozen result dataclass 字段、
+全部 output DataFrame schemas/dtypes、四条统计路径、effect sizes、预算、
+skipped reason vocabulary/precedence、missing/constant/infinity/small-sample
+行为、stable errors、deterministic ordering、public exports 和测试合同。
+若实现需要改变这些行为，必须先同步评审该记录、`SPEC.md` 和本计划。
+
 **依赖**
 
 Task 07。
@@ -681,19 +690,34 @@ analyze_target_relationships(
 
 **pytest 覆盖点**
 
-- 单类别 group key 下的 count、missing count、mean、median 和分位数。
-- 缺失 group、超过 20 组的频数截断及稳定排序。
-- 多 group key、非法 group、非数值 values 和非法预算被拒绝。
-- 分类 target：数值分组摘要、类别交叉表/比例、有限卡方结果。
-- 回归 target：数值相关、类别分组 target 摘要。
-- 缺 target、单类 target、任务不匹配、缺失 feature 和小样本。
-- 检验结果包含样本量、统计量、p 值和探索性限制。
+- public exports、签名、frozen dataclass 字段顺序和完整 fixed table schemas/
+  dtypes，包括 empty results。
+- 单 categorical group key 下的 count、missing count、mean、median、分位数、
+  missing group 披露、20-group budget、频数排序和 first-appearance tie break。
+- classification × numeric Kruskal-Wallis/epsilon squared；classification ×
+  categorical Chi-square/Cramér's V 和通用 `category_details` rate contract。
+- regression × numeric Pearson/absolute Pearson r；regression × categorical
+  target summary、Kruskal-Wallis/epsilon squared。
+- target/category/feature budgets、全部 skipped reasons 和 precedence。
+- missing、constant、infinity、insufficient sample/group、invalid task/column/
+  budget 和全部 stable messages。
+- 固定 `TASK08_MIN_GROUP_SIZE=2`、两条 Kruskal retained-group 规则、
+  complete-case category budget 和 classification zero-count Cartesian cells。
+- SciPy/effect-size 非有限结果的 `statistical_test_not_applicable`、封闭
+  limitations vocabulary/顺序及精确 row limitation 文本。
+- deterministic ordering、输入不变性、不调用 Task 07 public analysis
+  functions 和 Tasks 01-07 回归。
+- Task 08 real-numeric predicate、complex group value/target/feature behavior，
+  以及 bool group、20/21 category boundary、前置 skip 后 50/51 eligible budget、
+  duplicate index、mixed hashable categories 和 non-2×2 Chi-square。
 
 **验收标准**
 
 - 无 target 的普通分组分析可独立调用。
 - 分类与回归行为不通过猜测 target dtype 选择；必须使用显式 task。
-- 不训练模型、不生成因果结论、不自动进行多重模型式搜索。
+- 不训练模型、不生成因果结论、不自动进行多重模型式搜索或多重比较校正。
+- Task 08 不修改 workflow、reporting、CLI、I/O 或 Task 07 合同；完整集成留给
+  Task 13。
 
 ---
 
