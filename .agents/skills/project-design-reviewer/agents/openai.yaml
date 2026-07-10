@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Design Reviewer"
+  short_description: "Review Python and ML package designs before coding"
+  default_prompt: "Use $project-design-reviewer to review this package design and issue a Go, Conditional Go, or No-Go decision."

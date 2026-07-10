@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visualization System Builder"
+  short_description: "Build report-ready analytical visualization APIs"
+  default_prompt: "Use $visualization-system-builder to implement or review a report-ready analytical plot with matplotlib and pytest coverage."

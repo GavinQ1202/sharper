@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Package Architect"
+  short_description: "Design and review lean Python package architectures"
+  default_prompt: "Use $python-package-architect to design a small, clear Python package architecture and implementation plan."

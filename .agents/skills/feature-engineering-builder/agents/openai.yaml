@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Engineering Builder"
+  short_description: "Build leakage-safe tabular feature engineering flows"
+  default_prompt: "Use $feature-engineering-builder to implement or review a small, leakage-safe feature engineering capability with pytest coverage."
