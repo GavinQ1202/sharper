@@ -3,6 +3,7 @@
 import inspect
 from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal, get_type_hints
 
@@ -17,7 +18,7 @@ def test_version_contract() -> None:
 
 
 def test_all_contains_only_implemented_public_api() -> None:
-    """The package exports only APIs implemented through Task 08."""
+    """The package exports only APIs implemented through Task 09."""
     assert sharper.__all__ == [
         "__version__",
         "load_csv",
@@ -47,6 +48,11 @@ def test_all_contains_only_implemented_public_api() -> None:
         "TargetAnalysis",
         "compare_groups",
         "analyze_target_relationships",
+        "FeatureSuggestion",
+        "FeatureSuggestionReport",
+        "FeatureDerivationResult",
+        "suggest_feature_derivations",
+        "derive_features",
     ]
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
@@ -441,6 +447,89 @@ def test_task08_dataclass_fields_are_frozen() -> None:
             "category_details": pd.DataFrame,
             "statistical_tests": pd.DataFrame,
             "limitations": tuple[str, ...],
+        },
+    }
+    for result_type, expected_hints in contracts.items():
+        assert is_dataclass(result_type)
+        assert result_type.__dataclass_params__.frozen is True
+        assert [field.name for field in fields(result_type)] == list(expected_hints)
+        assert get_type_hints(result_type) == expected_hints
+        assert result_type.__doc__
+
+
+def test_task09_function_signatures_and_typing() -> None:
+    """Feature APIs expose exactly the frozen Task 09 signatures."""
+    suggest_signature = inspect.signature(sharper.suggest_feature_derivations)
+    assert list(suggest_signature.parameters) == [
+        "df",
+        "schema",
+        "target",
+        "exclude_columns",
+        "reference_date",
+        "max_suggestions",
+    ]
+    for name in list(suggest_signature.parameters)[1:]:
+        assert suggest_signature.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+    assert get_type_hints(sharper.suggest_feature_derivations) == {
+        "df": pd.DataFrame,
+        "schema": sharper.SchemaReport | None,
+        "target": str | None,
+        "exclude_columns": Sequence[str],
+        "reference_date": str | date | datetime | pd.Timestamp | None,
+        "max_suggestions": int,
+        "return": sharper.FeatureSuggestionReport,
+    }
+
+    derive_signature = inspect.signature(sharper.derive_features)
+    assert list(derive_signature.parameters) == ["df", "suggestions", "copy"]
+    assert derive_signature.parameters["copy"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert get_type_hints(sharper.derive_features) == {
+        "df": pd.DataFrame,
+        "suggestions": Sequence[sharper.FeatureSuggestion],
+        "copy": bool,
+        "return": sharper.FeatureDerivationResult,
+    }
+    assert sharper.suggest_feature_derivations.__doc__
+    assert sharper.derive_features.__doc__
+
+
+def test_task09_dataclass_fields_are_frozen() -> None:
+    """Task 09 result dataclasses contain exactly the frozen fields and hints."""
+    contracts = {
+        sharper.FeatureSuggestion: {
+            "name": str,
+            "feature_type": str,
+            "source_columns": tuple[str, ...],
+            "formula": str | None,
+            "parameters": tuple[tuple[str, str], ...],
+            "reason": str,
+            "risk": str,
+            "requires_fit": bool,
+            "priority": int,
+        },
+        sharper.FeatureSuggestionReport: {
+            "n_rows": int,
+            "requested_target": str | None,
+            "requested_exclusions": tuple[str, ...],
+            "reference_date": str | None,
+            "eligible_columns": tuple[str, ...],
+            "excluded_columns": tuple[str, ...],
+            "skipped_columns": tuple[str, ...],
+            "skipped_reasons": dict[str, str],
+            "max_suggestions": int,
+            "type_budgets": dict[str, int],
+            "available_counts": dict[str, int],
+            "available_suggestion_count": int,
+            "truncated": bool,
+            "truncation_reason": str | None,
+            "suggestions": tuple[sharper.FeatureSuggestion, ...],
+        },
+        sharper.FeatureDerivationResult: {
+            "data": pd.DataFrame,
+            "applied_suggestions": tuple[str, ...],
+            "skipped_suggestions": tuple[str, ...],
+            "skipped_reasons": dict[str, str],
+            "copy": bool,
         },
     }
     for result_type, expected_hints in contracts.items():

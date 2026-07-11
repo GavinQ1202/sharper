@@ -31,10 +31,11 @@ v0.1 会刻意限制算法、候选数量和图表类型，以优先保证正确
 
 ## 当前可用能力
 
-Tasks 01–08 已完成：包骨架、CSV/Excel Python API 读取、schema/summary、
+Tasks 01–09 已完成：包骨架、CSV/Excel Python API 读取、schema/summary、
 minimal data quality API、最薄 Markdown CLI，以及独立的 non-target numeric、
 categorical、correlation、outlier、group comparison 和 classification/regression
-target relationship Python APIs 已可用：
+target relationship、feature suggestion 与 safe stateless derivation Python APIs
+已可用：
 
 ```bash
 sharper analyze data.csv --output report.md
@@ -45,7 +46,13 @@ non-target analysis 尚未接入 workflow、reporting 或 CLI。
 
 Task 08 的 group comparison 与 classification/regression target relationship
 仅作为独立 Python API 提供，尚未接入 workflow、reporting 或 CLI。完整集成
-留给 Task 13。HTML、特征、绘图和建模仍是后续任务。
+留给 Task 13。
+
+Task 09 的 feature suggestions 与 safe stateless derivation 已作为独立 Python
+API 实现，但尚未接入现有 workflow、reporting 或 CLI；完整集成留给 Task 13。
+Task 09 只物化不需要拟合状态的 arithmetic 和 timezone-naive datetime 特征；
+binning、group aggregate 与 target encoding 仍只生成不可物化的结构化建议。
+HTML、绘图和建模仍是后续任务。
 
 Python API `load_excel` 可通过 optional `excel` extra 读取本地 `.xlsx`
 单 sheet。Excel 输入的 `sharper analyze input.xlsx` CLI 支持仍是后续完整

@@ -203,21 +203,34 @@ v0.1 规则固定且可单测：重复行、全缺失、缺失率阈值、常量
 
 ### 6.1 候选类型
 
-- 数值对：ratio、difference、product；仅在名称/相关性/量纲启发满足条件且不超过预算时建议。
-- 日期：年、月、星期、季度、是否周末、与明确 reference date 的间隔。
-- 单变量：固定边界或训练集拟合的分箱候选；v0.1 只建议，不物化。
-- 交互：有限的数值乘积；不做多项式爆炸。
-- 组聚合：count、mean、median 等候选；v0.1 只建议并标记 `requires_fit=True`，不提供 transformer。
+- 数值对：按 DataFrame 顺序对 real numeric non-boolean columns 枚举有限的
+  ratio、difference 和 product；不做 correlation-based candidate search、
+  反向 pair、self-pair 或多项式爆炸。
+- 日期：只对 timezone-naive pandas datetime dtype 建议 year、month、quarter、dayofweek、
+  is-weekend；仅在 caller 提供显式 reference date 时建议 days-since。
+- 单变量：learned binning candidate 在 v0.1 只建议，不物化。
+- group aggregate 与 target encoding candidate 在 v0.1 只作为结构化 review
+  suggestion，标记 `requires_fit=True`，不提供 transformer 或物化。
 
 ### 6.2 建议而非盲目生成
 
-`suggest_feature_derivations` 返回 `FeatureSuggestion`，含名称、类型、输入列、公式/参数、理由、风险、是否需要 `fit`、优先级。默认只建议，不修改 DataFrame。每类和总候选数必须有上限；排除 target、ID、常量和明显重复列。
+`suggest_feature_derivations` 返回冻结的 `FeatureSuggestionReport`，其 suggestions
+含稳定名称、封闭类型、来源列、canonical formula/parameters、封闭 reason/risk、
+是否需要 fit 和类型优先级。默认只建议且不修改 DataFrame。每类和总候选数有
+固定预算；排除 target、显式 exclusions、ID-like、全缺失、常量、unsupported
+dtype 和精确重复内容 columns。
 
-ratio、difference、product 和基于显式 reference date 的确定性日期变换可由 `derive_features` 物化。任何依赖 target、数据驱动分箱边界、类别集合或组统计映射的建议在 v0.1 均不可物化。
+ratio、difference、product、datetime components 和基于显式 reference date 的
+days-since 可由 `derive_features` 无状态物化。任何依赖 target、数据驱动分箱
+边界、类别集合或组统计映射的建议在 v0.1 均不可物化。
 
 ### 6.3 v0.1 收缩
 
-数据驱动分箱、group aggregate transformer、target encoding、WOE、监督分箱、自动筛选最佳交互和模型驱动特征选择推迟到 v0.2。涉及 target 的候选只输出风险提示，不物化。
+数据驱动/固定分箱物化、group aggregate transformer、target encoding、WOE、
+监督分箱、自动筛选最佳交互、correlation-based search 和模型驱动特征选择
+推迟。涉及 target 的候选只依据 feature dtype/schema 输出高风险提示，不读取
+target values，也不物化。Task 09 的完整冻结规则见
+`docs/decisions/task09-feature-engineering-contract.md`。
 
 ## 7. 可视化能力设计
 
@@ -517,6 +530,8 @@ def suggest_feature_derivations(
     *,
     schema: SchemaReport | None = None,
     target: str | None = None,
+    exclude_columns: Sequence[str] = (),
+    reference_date: str | date | datetime | pd.Timestamp | None = None,
     max_suggestions: int = 50,
 ) -> FeatureSuggestionReport: ...
 def derive_features(
@@ -544,8 +559,16 @@ def plot_regression_evaluation(
 ) -> PlotCollection: ...
 ```
 
-- 建议报告必须标记 leakage 风险和拟合需求；target 不得成为普通输入列。
-- `derive_features` 只接受 v0.1 白名单中的无状态 suggestion；返回的数据、已应用/跳过建议和警告均在 `FeatureDerivationResult` 中。除零结果变为缺失并产生警告。`requires_fit=True` 的建议报 `ValueError` 并说明 v0.1 只支持 suggestion。
+- 建议报告必须标记 leakage 风险、拟合需求、per-type/global budget 与确定性
+  截断；target 和 explicit exclusions 不得成为 source columns。Task 09 不调用
+  Task 07/08 analysis API，也不计算 correlation。
+- `derive_features` 只接受 Task 09 白名单中的无状态 suggestion；返回 data、
+  applied names、保留的 empty skipped fields 和 copy mode。除零、missing 和
+  non-finite arithmetic result 按决策记录转为 `NaN`；arithmetic sources 必须在
+  运算前转为 `float64`。任一 `requires_fit=True` suggestion 使整次调用
+  fail-fast `ValueError`。所有 validation 和临时计算成功后才统一追加新列；
+  `copy=False` 的任一失败也不得留下部分修改。`copy=True` 使用 pandas
+  `df.copy(deep=True)` 语义，不承诺递归复制 object-cell Python objects。
 - 绘图函数默认不显示、不保存；输入结果类型错误或非正预算报 `ValueError`。不适用的单项图返回带 skipped reason 的结果。
 
 ### 10.4 建模、评估与报告
@@ -700,7 +723,7 @@ Task 13 的 CLI 才默认执行 schema、摘要、质量、单变量分析、相
 | `quality` | 每条规则、阈值边界、严重度、重复、inf、高基数、无静默修改 | 参数化单元，`test_quality.py` | issue code 与证据稳定 |
 | `analysis` | 数值/类别统计、top-N、Pearson/Spearman、IQR outliers、分类/回归 target、NaN、常量、小样本 | 单元/数值，`test_analysis.py` | 与手算或 scipy 基准容差内一致 |
 | 分组比较 | 单分组列、缺失组、超 20 组截断、非法 value、多 key 拒绝 | 单元，`test_analysis.py` | 统计正确且截断被披露 |
-| `features` | 每种建议、预算、去重、排除 target/ID、除零、日期、列名冲突、确定性、拒绝需 fit suggestion | 单元/性质，`test_features.py` | 无泄漏输入且不组合爆炸，返回应用/跳过/警告 |
+| `features` | 冻结结果类型、列 eligibility/exclusion、每类/全局预算、命名/去重/排序、reference date、arithmetic/datetime dtypes、copy/fail-fast、拒绝需 fit suggestion | 单元/性质，`test_features.py` | 无 target/statistical leakage、无组合爆炸、无部分 mutation，结果符合 Task 09 决策记录 |
 | `visualization` | 每个任务函数、Figure 类型、图数量/采样上限、标签、空/常量/高基数、无 `show()`、Figure 清理、禁止重算 | headless 单元/视觉结构，`test_visualization.py` | Agg backend 下稳定，不泄漏 Figure，预算元数据完整 |
 | `modeling` | 分类/回归默认 pipeline、自定义 estimator、未知类别、缺失值、单类、小样本、随机复现 | 集成，`test_modeling.py` | fitted state 只来自训练集 |
 | leakage | 测试集独有类别/极值/组、重复行/索引警告、实体/时间风险、target/后验列排除、split 前 fit、禁止 test-set selection | 专项集成，`test_modeling.py`/`test_features.py` | transformer 统计不含测试数据，风险被拒绝或披露 |

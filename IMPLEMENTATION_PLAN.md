@@ -721,15 +721,20 @@ analyze_target_relationships(
 
 ---
 
-### Task 09 — 特征建议与安全无状态物化
+### Task 09 — Feature suggestions and safe stateless derivation
 
 **目标**
 
-实现有预算、可解释的候选发现，以及 v0.1 允许的四类安全 transform。
+按照已接受的 `docs/decisions/task09-feature-engineering-contract.md` 实现确定性、
+有预算、可解释的候选建议，以及 v0.1 白名单内的 arithmetic、datetime
+component 和显式 reference-date days-since 无状态物化。Fitted、target-aware、
+aggregate candidates 只建议，不物化。
 
 **依赖**
 
-Tasks 03、07。
+Task 03 schema contracts 和 `infer_schema`。Task 07 只是 sequencing
+prerequisite；Task 09 不 import/call Task 07 或 Task 08 public analysis API，
+不实现 correlation heuristic。
 
 **创建/修改文件**
 
@@ -742,11 +747,27 @@ Tasks 03、07。
 **Public API**
 
 ```python
-suggest_feature_derivations(...) -> FeatureSuggestionReport
-derive_features(...) -> FeatureDerivationResult
+suggest_feature_derivations(
+    df: pd.DataFrame,
+    *,
+    schema: SchemaReport | None = None,
+    target: str | None = None,
+    exclude_columns: Sequence[str] = (),
+    reference_date: str | date | datetime | pd.Timestamp | None = None,
+    max_suggestions: int = 50,
+) -> FeatureSuggestionReport
+
+derive_features(
+    df: pd.DataFrame,
+    suggestions: Sequence[FeatureSuggestion],
+    *,
+    copy: bool = True,
+) -> FeatureDerivationResult
 ```
 
-公开 `FeatureSuggestion`、`FeatureSuggestionReport` 和 `FeatureDerivationResult` 的已批准最小字段。
+公开并严格遵守决策记录冻结字段的 `FeatureSuggestion`、
+`FeatureSuggestionReport` 和 `FeatureDerivationResult`；三个类型均为
+`dataclass(frozen=True)`。不得新增其他 feature public API。
 
 **测试文件**
 
@@ -755,21 +776,46 @@ derive_features(...) -> FeatureDerivationResult
 
 **pytest 覆盖点**
 
-- ratio、difference、product 和日期候选。
-- 分箱、group aggregate、target-aware 候选只返回 `requires_fit=True`/不可物化标记。
-- target、ID、常量和明显重复列被排除。
-- 总建议最多 50、每类预算、去重和稳定优先级。
-- 零分母转缺失并记录 warning。
-- 显式 reference date、缺失日期、非法日期和不可复现当前日期禁用。
-- 列名冲突、输入列缺失、重复 suggestion 和 `copy` 行为。
-- `requires_fit=True` suggestion 被 `derive_features` 拒绝。
-- 返回 applied、skipped、warnings；输入不变。
+- exact signatures、type hints/docstrings、exports、三个 frozen dataclass 的字段/
+  顺序/类型。
+- shared DataFrame、schema、target、exclusions、reference date、budget validation
+  及稳定错误和 precedence。
+- real numeric/timezone-naive datetime/categorical eligibility；target、explicit exclusions、
+  identifier、all-missing、constant、unsupported dtype 和 exact duplicate-content
+  exclusion precedence；三种 column states 构成完整 partition，duplicate comparison
+  只在包含 unsupported dtype 的六步前置过滤后的候选域中执行，并断言
+  `unsupported_dtype` 优先于 `duplicate_content`。
+- datetime、ratio、difference、product、binning/group aggregate/target encoding
+  candidates 的封闭 vocabulary、risk/reason/requires-fit 映射；六种 datetime
+  types 均固定 priority 1，稳定生成顺序不变。
+- 固定 per-type budgets、global 49/50/51 boundaries、pair direction、命名、冲突
+  过滤、identity 去重、priority 和 stable ordering。
+- 显式 reference date 的 Timestamp/datetime/date dispatch、规范化、timezone-aware
+  拒绝、无 eligible datetime column metadata 及无 current-date dependency；
+  timezone-aware datetime source 拒绝、Monday=0/Sunday=6 与 weekend 定义。
+- requires-fit、unsupported type、missing source、每种 materializable/suggestion-only
+  canonical fields、output collision、Sequence container 和 copy 的 fail-fast
+  validation；source count、existence、dtype compatibility 固定置于 canonical
+  fields 前，所有 validation 在临时计算前完成。
+- arithmetic source 先转 `float64`、large-integer overflow、zero/missing/non-finite
+  行为；datetime extension dtypes、missing 与正负 days-since。
+- index/原列/dtype 保留、新列追加顺序、`copy=True`/`copy=False`/empty
+  suggestions、unexpected computation failure transaction-like atomicity，以及
+  pandas `deep=True` 不递归复制 object cells；正常结果 skipped fields 为空。
+- target values 和 held-out-only category/extreme 不影响 materialized formulas；
+  不调用 Task 07/08 analysis。
 
 **验收标准**
 
-- v0.1 不出现 fitted transformer、target encoding、监督分箱或组聚合物化。
-- 候选数量有硬预算且相同输入顺序稳定。
-- 每个物化特征可追溯到公式和来源列。
+- v0.1 不出现 learned/fixed binning、group aggregate、target encoding、WOE、
+  监督分箱、target-aware materialization、fitted transformer 或 correlation-based
+  search。
+- 候选数量遵守冻结的 per-type/global hard budgets，相同输入顺序稳定并披露
+  budget 结果。
+- 每个物化特征可追溯到 canonical formula、source columns 和 parameters。
+- 不修改 workflow、reporting、CLI、I/O、analysis、pyproject dependency groups
+  或 Tasks 01–08 contracts。
+- 项目本地 pytest、Ruff lint、Ruff format check 和 build 全部通过。
 
 ---
 

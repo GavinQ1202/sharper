@@ -14,6 +14,13 @@ from sharper.analysis import (
     compute_correlations,
     detect_outliers,
 )
+from sharper.features import (
+    FeatureDerivationResult,
+    FeatureSuggestion,
+    FeatureSuggestionReport,
+    derive_features,
+    suggest_feature_derivations,
+)
 from sharper.io import load_csv, load_excel
 from sharper.quality import QualityIssue, QualityReport, check_data_quality
 from sharper.reporting import ReportArtifact, generate_analysis_report
@@ -52,4 +59,9 @@ __all__ = [
     "TargetAnalysis",
     "compare_groups",
     "analyze_target_relationships",
+    "FeatureSuggestion",
+    "FeatureSuggestionReport",
+    "FeatureDerivationResult",
+    "suggest_feature_derivations",
+    "derive_features",
 ]

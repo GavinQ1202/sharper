@@ -41,6 +41,7 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 - Task 06 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task06-excel-io-contract.md`；改变 `load_excel` 签名、`.xlsx` 单 sheet 范围、`read_options` 白名单、optional dependency、错误类型或稳定消息前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 06 不修改 CLI、workflow 或 reporting。
 - Task 07 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task07-analysis-contract.md`；改变 analysis 函数签名、结果 dataclass 字段、输出表 schema、skipped reason codes/precedence、错误消息、排序或 non-target 范围前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 07 不修改 CLI、workflow 或 reporting，不实现 target relationship、grouped analysis、visualization、feature engineering、modeling 或 evaluation。
 - Task 08 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task08-group-target-analysis-contract.md`；改变 `compare_groups`/`analyze_target_relationships` 签名、`GroupComparison`/`TargetAnalysis` 字段、输出表 schema、四条统计路径、effect size、Task 08 real-numeric 规则、固定 minimum group size、complete-case category budget、limitations vocabulary、skipped reason codes/precedence、错误消息、缺失/常量/infinity/小样本行为或排序前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 08 必须使用专用 private real-numeric predicate，complex 不进入 Task 08 numeric path；不得改变 Task 07 `_is_numeric_non_bool` 或 Task 07 public behavior。Task 08 不修改 workflow、reporting、CLI、I/O 或 Task 07 合同，不调用 Task 07 public analysis functions，不实现 visualization、feature engineering、modeling 或 evaluation。
+- Task 09 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task09-feature-engineering-contract.md`；改变两个函数签名、三个 frozen result dataclass、feature/reason/risk vocabulary、requires-fit 映射、列 eligibility/exclusion、reference date、预算、pair enumeration、命名、去重、排序、错误、物化 dtype 或 copy 行为前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 09 只依赖 pandas、numpy、Task 03 schema contracts 和 `infer_schema`；Task 07 只是 sequencing prerequisite，不得 import/call Task 07/08 public analysis functions 或计算 correlation。Task 09 不修改 workflow、reporting、CLI、I/O、analysis、pyproject 或 Tasks 01–08 合同。
 - v0.1 默认以 `OSError` 表示文件读取失败，以 `ValueError` 表示无效参数、缺失列和非法列类型等用户输入错误；没有单独 SPEC 修改不得新增公共自定义异常体系。
 - `analytics-workflow-builder` 最早可用于 Task 03 或 Task 04，不用于 Task 01 或 Task 02。
 - `feature-engineering-builder` 不用于 Task 01、Task 02、Task 03 或 Task 04；仅在 `IMPLEMENTATION_PLAN.md` 进入 feature engineering Task 后使用。
@@ -65,12 +66,15 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 ## Feature engineering 规则
 
 - `suggest_feature_derivations` 默认只建议，不物化。
-- 所有建议包含来源列、公式、理由、风险、是否需要 fit 和稳定名称。
-- 默认限制每类和总候选数；禁止无界笛卡尔组合。
-- v0.1 仅可直接物化 ratio、difference、product 和基于显式 reference date 的确定性日期特征。
+- 所有建议使用 Task 09 决策记录冻结的来源列、canonical formula/parameters、封闭 reason/risk、requires-fit 和稳定名称。
+- 按冻结的 per-type/global budgets、pair direction、去重和 deterministic ordering 生成；禁止无界笛卡尔组合、随机抽样或 correlation-based search。
+- v0.1 仅可直接物化 ratio、difference、product、pandas datetime components 和基于显式 reference date 的 days-since。
 - 需要拟合的 suggestion 不得通过普通 DataFrame helper 在全量数据执行。
-- 数据驱动分箱、group aggregate、target encoding、WOE 和监督分箱在 v0.1 只能建议，不提供 transform。
-- 除零、无穷、未知类别、未见组和列名冲突必须有显式策略与测试。
+- learned/fixed binning、group aggregate、target encoding、WOE、监督分箱和 target-aware candidates 在 v0.1 只能建议，不提供 transform。
+- target values 不参与候选评分；target、显式 exclusions、ID-like、all-missing、constant 和 exact duplicate-content columns 不作为 source。
+- 只有 timezone-naive pandas datetime 可作为 datetime source；weekday/weekend、reference-date dispatch 和 timezone-aware rejection 必须遵守 Task 09 决策记录。
+- Arithmetic source 必须在运算前转为 `float64`；除零、无穷、large-integer overflow 和 datetime missing 必须遵守决策记录。
+- `derive_features` 必须 validation/computation-before-mutation；`copy=False` 的任何失败不得部分修改输入，`copy=True` 只承诺 pandas `df.copy(deep=True)` 而非递归复制 object cells。
 
 ## Visualization API 规则
 

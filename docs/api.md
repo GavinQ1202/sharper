@@ -255,3 +255,54 @@ claim, model, plot, cleaning, or post-hoc test is produced. Complete field types
 schemas, budgets, skipped-reason precedence, stable errors, and limitation codes
 follow the frozen
 [Task 08 contract](decisions/task08-group-target-analysis-contract.md).
+
+## Feature suggestions and safe stateless derivation
+
+Task 09 provides independent Python APIs. They are not integrated with workflow,
+reporting, or CLI; that integration remains Task 13 work.
+
+```python
+def suggest_feature_derivations(
+    df: pd.DataFrame,
+    *,
+    schema: SchemaReport | None = None,
+    target: str | None = None,
+    exclude_columns: Sequence[str] = (),
+    reference_date: str | date | datetime | pd.Timestamp | None = None,
+    max_suggestions: int = 50,
+) -> FeatureSuggestionReport: ...
+
+def derive_features(
+    df: pd.DataFrame,
+    suggestions: Sequence[FeatureSuggestion],
+    *,
+    copy: bool = True,
+) -> FeatureDerivationResult: ...
+```
+
+`FeatureSuggestion`, `FeatureSuggestionReport`, and `FeatureDerivationResult` are
+frozen dataclasses. Suggestions are deterministic, bounded, ordered, and use
+closed feature-type, reason, and risk vocabularies. The report partitions every
+input column into eligible, excluded, or skipped state and discloses per-type and
+global budgets.
+Only ratio, difference, product, timezone-naive datetime components, and
+explicit-reference-date days-since suggestions can be materialized. Learned/fixed
+binning, group aggregate, and target encoding remain structured
+`requires_fit=True` suggestions and make `derive_features` fail fast if passed
+for materialization.
+
+The implementation uses schema contracts and `infer_schema` only. It does not call Task 07
+or Task 08 analysis, compute correlations, read target values for candidate
+ranking, read the system date, fit state, or mutate input unless the caller
+explicitly passes `copy=False` to `derive_features`.
+
+Derivation is transaction-like: validation and all temporary computations finish
+before new columns are attached, so failures do not partially mutate the input,
+including with `copy=False`. `copy=True` follows pandas `df.copy(deep=True)`
+semantics and does not promise recursive copying of mutable Python objects stored
+inside object-dtype cells.
+
+Exact fields, vocabularies, eligibility/exclusion rules, reference-date
+normalization, budgets, naming, deduplication, ordering, validation messages,
+materialized dtypes, missing/non-finite behavior, and copy semantics follow the
+frozen [Task 09 contract](decisions/task09-feature-engineering-contract.md).
