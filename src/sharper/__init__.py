@@ -14,6 +14,13 @@ from sharper.analysis import (
     compute_correlations,
     detect_outliers,
 )
+from sharper.evaluation import (
+    ClassificationEvaluation,
+    RegressionEvaluation,
+    evaluate_classifier,
+    evaluate_model,
+    evaluate_regressor,
+)
 from sharper.features import (
     FeatureDerivationResult,
     FeatureSuggestion,
@@ -22,10 +29,28 @@ from sharper.features import (
     suggest_feature_derivations,
 )
 from sharper.io import load_csv, load_excel
+from sharper.modeling import (
+    RegressionTrainingResult,
+    TrainingResult,
+    train_classifier,
+    train_regressor,
+)
 from sharper.quality import QualityIssue, QualityReport, check_data_quality
 from sharper.reporting import ReportArtifact, generate_analysis_report
 from sharper.schema import ColumnSchema, SchemaReport, TargetCandidate, infer_schema
 from sharper.summary import DataFrameSummary, summarize_dataframe
+from sharper.visualization import (
+    PlotCollection,
+    PlotResult,
+    plot_classification_evaluation,
+    plot_correlations,
+    plot_distributions,
+    plot_group_comparison,
+    plot_missingness,
+    plot_outliers,
+    plot_regression_evaluation,
+    plot_target_relationships,
+)
 from sharper.workflow import AnalysisRun, run_analysis
 
 __version__ = "0.1.0"
@@ -64,4 +89,23 @@ __all__ = [
     "FeatureDerivationResult",
     "suggest_feature_derivations",
     "derive_features",
+    "TrainingResult",
+    "train_classifier",
+    "RegressionTrainingResult",
+    "train_regressor",
+    "ClassificationEvaluation",
+    "evaluate_classifier",
+    "RegressionEvaluation",
+    "evaluate_regressor",
+    "evaluate_model",
+    "PlotResult",
+    "PlotCollection",
+    "plot_distributions",
+    "plot_missingness",
+    "plot_correlations",
+    "plot_outliers",
+    "plot_group_comparison",
+    "plot_target_relationships",
+    "plot_classification_evaluation",
+    "plot_regression_evaluation",
 ]

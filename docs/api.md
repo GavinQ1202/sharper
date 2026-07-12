@@ -50,8 +50,9 @@ and cannot be overridden.
 
 The loader preserves pandas' parsed column names and values, does not clean or
 coerce data, and does not run schema inference, summary, quality checks,
-workflow, reporting, visualization, or modeling. Task 06 does not add Excel
-CLI support; `sharper analyze input.xlsx` is future workflow/CLI work.
+workflow, reporting, visualization, or modeling. The current `sharper analyze`
+CLI accepts local single-sheet `.xlsx` input when the `excel` extra (and thus
+`openpyxl`) is installed.
 
 Invalid path types, non-`.xlsx` suffixes, invalid sheet names, unsupported
 read options, missing sheets, and pandas parser failures raise `ValueError`
@@ -258,8 +259,9 @@ follow the frozen
 
 ## Feature suggestions and safe stateless derivation
 
-Task 09 provides independent Python APIs. They are not integrated with workflow,
-reporting, or CLI; that integration remains Task 13 work.
+Task 09 provides independent Python APIs. Task 13 consumes its suggestion report
+from the complete workflow, reporting, and CLI without materializing suggested
+features.
 
 ```python
 def suggest_feature_derivations(
@@ -306,3 +308,114 @@ Exact fields, vocabularies, eligibility/exclusion rules, reference-date
 normalization, budgets, naming, deduplication, ordering, validation messages,
 materialized dtypes, missing/non-finite behavior, and copy semantics follow the
 frozen [Task 09 contract](decisions/task09-feature-engineering-contract.md).
+
+## Task 10 visualization API
+
+Task 10 visualization is implemented as independent Python APIs. Task 13 stores
+their results in the complete workflow and exports their existing Figures through
+reporting and the CLI. Its public API is:
+
+```python
+def plot_distributions(
+    df: pd.DataFrame,
+    *,
+    max_plots: int = 20,
+    sample_size: int = 10_000,
+) -> PlotCollection: ...
+
+def plot_missingness(df: pd.DataFrame, *, max_columns: int = 50) -> PlotResult: ...
+def plot_correlations(result: CorrelationAnalysis) -> PlotResult: ...
+def plot_outliers(result: OutlierAnalysis, *, max_plots: int = 20) -> PlotCollection: ...
+def plot_group_comparison(result: GroupComparison) -> PlotCollection: ...
+def plot_target_relationships(result: TargetAnalysis) -> PlotCollection: ...
+```
+
+`PlotResult` and `PlotCollection` are frozen dataclasses. Task 10 uses
+only seaborn and matplotlib, returns caller-owned Figures, does not call
+`show()`, does not save files, and does not add feature-suggestion plots. Raw
+DataFrame input is limited to distributions and missingness; the other APIs
+consume frozen Task 07/08 results without recomputing statistics. The complete
+contract is the accepted
+[Task 10 visualization contract](decisions/task10-visualization-contract.md).
+
+## Classification baseline and evaluation
+
+Task 11 provides a separate, split-first classification API. Task 13 also
+integrates this existing API into `run_analysis`, report generation, and the CLI
+when the caller explicitly selects classification modeling.
+
+```python
+from sharper import (
+    evaluate_classifier,
+    plot_classification_evaluation,
+    train_classifier,
+)
+
+training = train_classifier(frame, "outcome", exclude_columns=["future_value"])
+evaluation = evaluate_classifier(training)
+plots = plot_classification_evaluation(evaluation)
+```
+
+`train_classifier(df, target, *, features=None, exclude_columns=(),
+time_column=None, estimator=None, test_size=0.20, random_state=42)` fixes
+stratified row positions first, infers schema and selects eligible fields from
+training rows only, then fits a `ColumnTransformer`/`Pipeline`. Datetime and
+timedelta inputs, and a declared `time_column`, are rejected because the API
+only supports random holdout. Known posterior, future, and entity-risk fields
+must be named in `exclude_columns`; they never enter schema selection or fit.
+
+`TrainingResult` freezes the fitted pipeline and estimator, train/test positions,
+train-only schema snapshot, selected feature order, holdout `X_test`/`y_test`,
+seed, exclusion/time metadata, and ordered warnings/limitations. Only the
+holdout is retained for evaluation.
+
+`evaluate_classifier(result)` returns `ClassificationEvaluation` with holdout
+labels/predictions, accuracy, balanced accuracy, macro F1, classes-ordered
+confusion matrix, and a frozen ROC curve/AUC only when a binary estimator offers
+valid probabilities or decision scores. Its classification branch of
+`evaluate_model(result)` remains a thin Task 11 convenience dispatcher.
+`plot_classification_evaluation` reads the frozen evaluation only and returns a confusion matrix plus, when
+available, a ROC Figure; it never fits, predicts, or recomputes metrics.
+
+The complete fields, validation order, error messages, estimator-output checks,
+metadata and Figure lifecycle are frozen in the
+[Task 11 contract](decisions/task11-classification-baseline-evaluation-visualization-contract.md).
+
+## Regression baseline and evaluation
+
+Task 12 provides an independent split-first regression API. Task 13 also
+integrates this existing API into `run_analysis`, report generation, and the CLI
+when the caller explicitly selects regression modeling.
+
+```python
+from sharper import (
+    evaluate_regressor,
+    plot_regression_evaluation,
+    train_regressor,
+)
+
+training = train_regressor(frame, "amount", exclude_columns=["future_amount"])
+evaluation = evaluate_regressor(training)
+plots = plot_regression_evaluation(evaluation)
+```
+
+`train_regressor(df, target, *, features=None, exclude_columns=(),
+time_column=None, estimator=None, test_size=0.20, random_state=42)` rejects
+datetime/timedelta and declared time risk before splitting, decides schema,
+ID-like status, feature eligibility, preprocessing, and estimator fit from
+training rows only, and retains only the copied holdout snapshot. The target
+must be complete, finite, non-boolean real-numeric data with at least two
+distinct values.
+
+`RegressionTrainingResult` holds the fitted clone, train-only schema, feature
+order, integer split positions, and holdout `X_test`/`y_test`. `evaluate_regressor`
+predicts that holdout once and returns `RegressionEvaluation`: an ordered
+prediction table with `actual - predicted` residuals plus MAE, RMSE, and
+`r2_score(..., force_finite=True)`. `plot_regression_evaluation` only reads the
+frozen evaluation and returns predicted-versus-actual and residual Figures.
+
+`evaluate_model(result)` dispatches exactly once by the approved frozen training
+result type: existing `TrainingResult` goes to `evaluate_classifier`, while
+`RegressionTrainingResult` goes to `evaluate_regressor`. The complete fields,
+validation order, errors, leakage boundary, metadata, and Figure lifecycle are
+frozen in the [Task 12 contract](decisions/task12-regression-baseline-evaluation-visualization-contract.md).

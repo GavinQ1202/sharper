@@ -4,10 +4,12 @@ import inspect
 from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
 from datetime import date, datetime
+from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, Literal, get_type_hints
 
 import pandas as pd
+from sklearn.base import RegressorMixin
 
 import sharper
 
@@ -17,8 +19,19 @@ def test_version_contract() -> None:
     assert sharper.__version__ == "0.1.0"
 
 
+def test_console_entry_point_contract() -> None:
+    """The sole frozen console entry point targets the public CLI app."""
+    matches = [
+        entry
+        for entry in entry_points(group="console_scripts")
+        if entry.name == "sharper"
+    ]
+    assert len(matches) == 1
+    assert matches[0].value == "sharper.cli:app"
+
+
 def test_all_contains_only_implemented_public_api() -> None:
-    """The package exports only APIs implemented through Task 09."""
+    """The package exports only public APIs implemented through Task 11."""
     assert sharper.__all__ == [
         "__version__",
         "load_csv",
@@ -53,6 +66,25 @@ def test_all_contains_only_implemented_public_api() -> None:
         "FeatureDerivationResult",
         "suggest_feature_derivations",
         "derive_features",
+        "TrainingResult",
+        "train_classifier",
+        "RegressionTrainingResult",
+        "train_regressor",
+        "ClassificationEvaluation",
+        "evaluate_classifier",
+        "RegressionEvaluation",
+        "evaluate_regressor",
+        "evaluate_model",
+        "PlotResult",
+        "PlotCollection",
+        "plot_distributions",
+        "plot_missingness",
+        "plot_correlations",
+        "plot_outliers",
+        "plot_group_comparison",
+        "plot_target_relationships",
+        "plot_classification_evaluation",
+        "plot_regression_evaluation",
     ]
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
@@ -215,7 +247,7 @@ def test_task04_dataclass_fields_are_frozen() -> None:
         assert result_type.__doc__
 
 
-def test_task05_function_signatures_and_typing() -> None:
+def test_task13_function_signatures_and_typing() -> None:
     """Workflow and reporting functions expose their frozen signatures."""
     run_signature = inspect.signature(sharper.run_analysis)
     assert list(run_signature.parameters) == [
@@ -225,6 +257,12 @@ def test_task05_function_signatures_and_typing() -> None:
         "include_model",
         "id_columns",
         "exclude_columns",
+        "features",
+        "time_column",
+        "group_by",
+        "reference_date",
+        "max_suggestions",
+        "test_size",
         "random_state",
     ]
     assert get_type_hints(sharper.run_analysis)["return"] is sharper.AnalysisRun
@@ -241,7 +279,7 @@ def test_task05_function_signatures_and_typing() -> None:
         "run": sharper.AnalysisRun,
         "output_path": str | Path,
         "title": str,
-        "format": str,
+        "format": Literal["markdown", "html"],
         "overwrite": bool,
         "return": sharper.ReportArtifact,
     }
@@ -538,3 +576,143 @@ def test_task09_dataclass_fields_are_frozen() -> None:
         assert [field.name for field in fields(result_type)] == list(expected_hints)
         assert get_type_hints(result_type) == expected_hints
         assert result_type.__doc__
+
+
+def test_task11_public_signatures_and_frozen_fields() -> None:
+    """Task 11 exposes only its frozen classification contract."""
+    training = inspect.signature(sharper.train_classifier)
+    assert list(training.parameters) == [
+        "df",
+        "target",
+        "features",
+        "exclude_columns",
+        "time_column",
+        "estimator",
+        "test_size",
+        "random_state",
+    ]
+    assert all(
+        training.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+        for name in list(training.parameters)[2:]
+    )
+    assert training.parameters["features"].default is None
+    assert training.parameters["exclude_columns"].default == ()
+    assert training.parameters["time_column"].default is None
+    assert training.parameters["estimator"].default is None
+    assert training.parameters["test_size"].default == 0.20
+    assert training.parameters["random_state"].default == 42
+    for function in (
+        sharper.train_classifier,
+        sharper.evaluate_classifier,
+        sharper.evaluate_model,
+        sharper.plot_classification_evaluation,
+    ):
+        assert function.__doc__
+    assert [field.name for field in fields(sharper.TrainingResult)] == [
+        "task",
+        "target",
+        "feature_columns",
+        "excluded_columns",
+        "time_column",
+        "schema",
+        "pipeline",
+        "estimator",
+        "classes",
+        "train_row_positions",
+        "test_row_positions",
+        "X_test",
+        "y_test",
+        "test_size",
+        "random_state",
+        "warnings",
+        "limitations",
+    ]
+    assert [field.name for field in fields(sharper.ClassificationEvaluation)] == [
+        "task",
+        "target",
+        "holdout_positions",
+        "classes",
+        "y_true",
+        "y_pred",
+        "score_kind",
+        "positive_label",
+        "scores",
+        "roc_curve",
+        "metrics",
+        "confusion_matrix",
+        "roc_auc",
+        "limitations",
+    ]
+    assert sharper.TrainingResult.__dataclass_params__.frozen is True
+    assert sharper.ClassificationEvaluation.__dataclass_params__.frozen is True
+
+
+def test_task12_public_signatures_and_frozen_fields() -> None:
+    """Task 12 exposes its independent frozen regression contract."""
+    signature = inspect.signature(sharper.train_regressor)
+    assert list(signature.parameters) == [
+        "df",
+        "target",
+        "features",
+        "exclude_columns",
+        "time_column",
+        "estimator",
+        "test_size",
+        "random_state",
+    ]
+    assert all(
+        signature.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+        for name in list(signature.parameters)[2:]
+    )
+    assert signature.parameters["features"].default is None
+    assert signature.parameters["exclude_columns"].default == ()
+    assert signature.parameters["time_column"].default is None
+    assert signature.parameters["estimator"].default is None
+    assert signature.parameters["test_size"].default == 0.20
+    assert signature.parameters["random_state"].default == 42
+    assert get_type_hints(sharper.train_regressor) == {
+        "df": pd.DataFrame,
+        "target": str,
+        "features": Sequence[str] | None,
+        "exclude_columns": Sequence[str],
+        "time_column": str | None,
+        "estimator": RegressorMixin | None,
+        "test_size": float,
+        "random_state": int | None,
+        "return": sharper.RegressionTrainingResult,
+    }
+    assert [field.name for field in fields(sharper.RegressionTrainingResult)] == [
+        "task",
+        "target",
+        "feature_columns",
+        "excluded_columns",
+        "time_column",
+        "schema",
+        "pipeline",
+        "estimator",
+        "train_row_positions",
+        "test_row_positions",
+        "X_test",
+        "y_test",
+        "test_size",
+        "random_state",
+        "warnings",
+        "limitations",
+    ]
+    assert [field.name for field in fields(sharper.RegressionEvaluation)] == [
+        "task",
+        "target",
+        "holdout_positions",
+        "predictions",
+        "metrics",
+        "limitations",
+    ]
+    assert sharper.RegressionTrainingResult.__dataclass_params__.frozen is True
+    assert sharper.RegressionEvaluation.__dataclass_params__.frozen is True
+    for function in (
+        sharper.train_regressor,
+        sharper.evaluate_regressor,
+        sharper.evaluate_model,
+        sharper.plot_regression_evaluation,
+    ):
+        assert function.__doc__

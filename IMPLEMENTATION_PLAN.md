@@ -35,7 +35,10 @@ v0.1 的分发契约冻结为：distribution name `sharper`、import name `sharp
 2. 同时提交实现、对应测试和该任务影响到的最小文档更新。
 3. 为新增 public API 提供完整 type hints、docstring、异常和副作用说明。
 4. 不静默修改调用者的 DataFrame。
-5. 运行并通过：
+5. 在运行任何 Python 验证命令前执行 `bash scripts/verify-uv-env.sh`，并只使用
+   `.venv/bin/python` 作为控制解释器（临时 distribution clean-install venv 除外；
+   详见 `AGENTS.md`）。
+6. 运行并通过：
 
    ```bash
    .venv/bin/python -m pytest
@@ -43,13 +46,13 @@ v0.1 的分发契约冻结为：distribution name `sharper`、import name `sharp
    .venv/bin/python -m ruff format --check .
    ```
 
-6. 涉及打包、CLI、public exports 或发布时，额外运行：
+7. 涉及打包、CLI、public exports 或发布时，额外运行：
 
    ```bash
-   .venv/bin/python -m build
+   .venv/bin/python -m build --no-isolation
    ```
 
-7. 若任务依赖的前置任务尚未合并，不得通过临时重复实现绕开依赖。
+8. 若任务依赖的前置任务尚未合并，不得通过临时重复实现绕开依赖。
 
 下面的“文件”是该任务允许创建或修改的主要范围。`README.md`、`docs/api.md` 或 docstring 只在 public behavior 改变时做局部同步。
 
@@ -827,6 +830,14 @@ derive_features(
 matplotlib 作为底层 backend、Figure/Axes 契约和低级 fallback。绘图消费数据
 或既有分析结果，不隐藏重算统计。
 
+**API 决策记录**
+
+必须遵守 `docs/decisions/task10-visualization-contract.md`。该记录冻结六个
+public function 签名、`PlotResult`/`PlotCollection` 字段、每类图的数据来源和
+算法、预算、metadata、排序、错误、空结果、Figure 生命周期、全局状态与测试
+合同。Task 09 仅是 sequencing prerequisite，不是 Task 10 实际 API 依赖；不得
+绘制 feature suggestions。
+
 **依赖**
 
 Tasks 07–09。
@@ -838,19 +849,42 @@ Tasks 07–09。
 - `tests/test_visualization.py`
 - `tests/test_public_api.py`
 - `docs/api.md`
+- `README.md`
+- `docs/decisions/task12-regression-baseline-evaluation-visualization-contract.md`
+- `SPEC.md`
+- `IMPLEMENTATION_PLAN.md`
+- `AGENTS.md`
+- `README.md`
 
 **Public API**
 
 ```python
-plot_distributions(...) -> PlotCollection
-plot_missingness(...) -> PlotResult
-plot_correlations(result: CorrelationAnalysis) -> PlotResult
-plot_outliers(...) -> PlotCollection
-plot_group_comparison(...) -> PlotCollection
-plot_target_relationships(...) -> PlotCollection
+def plot_distributions(
+    df: pd.DataFrame,
+    *,
+    max_plots: int = 20,
+    sample_size: int = 10_000,
+) -> PlotCollection: ...
+
+def plot_missingness(
+    df: pd.DataFrame,
+    *,
+    max_columns: int = 50,
+) -> PlotResult: ...
+
+def plot_correlations(result: CorrelationAnalysis) -> PlotResult: ...
+
+def plot_outliers(
+    result: OutlierAnalysis,
+    *,
+    max_plots: int = 20,
+) -> PlotCollection: ...
+
+def plot_group_comparison(result: GroupComparison) -> PlotCollection: ...
+def plot_target_relationships(result: TargetAnalysis) -> PlotCollection: ...
 ```
 
-本任务冻结 `PlotResult` 和 `PlotCollection` 的最小字段。模型评估图留给 Tasks 11–12。
+本任务按决策记录冻结 `PlotResult` 和 `PlotCollection` 的全部字段。模型评估图留给 Tasks 11–12。
 
 **测试文件**
 
@@ -859,8 +893,9 @@ plot_target_relationships(...) -> PlotCollection
 
 **pytest 覆盖点**
 
-- 数值直方/箱线、类别 top-N、缺失率、相关热图、异常值、分组和 target 图。
-- 返回对象包含 Figure、task、采样/截断元数据和 skipped reason。
+- 数值直方、类别 top-N、缺失率、相关热图、异常值、分组和 target 图。
+- 返回对象包含 Figure、chart type、source、item 和冻结的采样/截断 metadata；
+  collection 空结果不创建 skipped plot。
 - 最多 20 张图、最多 10,000 行绘图样本、50 列预算。
 - 空列、全缺失、常量、高基数、不适用 target 图。
 - 不调用 `show()`、不默认写文件、不依赖全局状态。
@@ -869,13 +904,17 @@ plot_target_relationships(...) -> PlotCollection
   seaborn 不适用时的低级 fallback。
 - 使用 Agg backend；测试结束关闭所有 Figure。
 - monkeypatch/spy 证明消费结果的函数不重新调用分析计算。
+- 验证 Figure ownership、rcParams/backend/global seaborn state、稳定 metadata、
+  参数/结果 schema errors、无 bare Axes、确定性颜色和输入不变性。
 
 **验收标准**
 
-- 每种批准任务至少能生成一个可保存 Figure 或明确 skipped result。
+- 每种批准任务至少能生成一个可保存 Figure，或按决策记录返回空 collection / 正常空 Figure。
 - 所有抽样和截断在返回元数据中披露。
 - 不建立多可视化后端系统；无 Plotly、Altair、Bokeh、交互式 dashboard
   或主题系统。
+- 不修改 workflow、reporting、CLI、I/O、analysis、features、`pyproject.toml`、
+  dependency groups 或 Tasks 01–09 contracts；不保存文件。
 
 ---
 
@@ -901,11 +940,22 @@ Tasks 03、09、10。
 - `tests/test_public_api.py`
 - `docs/leakage.md`
 - `docs/api.md`
+- `README.md`
 
 **Public API**
 
 ```python
-train_classifier(...) -> TrainingResult
+train_classifier(
+    df: pd.DataFrame,
+    target: str,
+    *,
+    features: Sequence[str] | None = None,
+    exclude_columns: Sequence[str] = (),
+    time_column: str | None = None,
+    estimator: ClassifierMixin | None = None,
+    test_size: float = 0.20,
+    random_state: int | None = 42,
+) -> TrainingResult: ...
 evaluate_classifier(result: TrainingResult) -> ClassificationEvaluation
 evaluate_model(result: TrainingResult) -> ClassificationEvaluation | RegressionEvaluation
 plot_classification_evaluation(
@@ -925,14 +975,17 @@ plot_classification_evaluation(
 **pytest 覆盖点**
 
 - split 后才 fit imputer、encoder、scaler 和 estimator。
+- Task 03 schema、ID-like、dtype 与最终 feature eligibility 只从 `X_train` 决定；holdout 不影响 feature order。
 - ColumnTransformer 数值/类别路径、未知测试类别和缺失值。
 - 默认 Logistic Regression、显式 feature 列和自定义 classifier。
+- `exclude_columns` 排除 posterior/future/entity 风险列；`time_column`、datetime 或 timedelta 输入稳定拒绝。
 - 单类、小样本、缺 target、非法 split、非 classifier estimator。
 - 测试独有类别/极值不进入 fitted state。
 - target、后验字段、ID 和 exclude columns 不进入特征。
 - 重复行/索引警告；实体重复或时间风险拒绝/警告符合 SPEC。
 - holdout 不参与特征、阈值或模型选择。
 - 相同 random_state 得到相同 split、列和指标；自定义 estimator 随机性被披露。
+- estimator clone/ownership、错误 predict/probability/classes 输出与 result consistency。
 - accuracy、balanced accuracy、macro F1、二分类 ROC AUC 和混淆矩阵与 sklearn 一致。
 - 多分类和无 `predict_proba` estimator 的适用指标。
 - 混淆矩阵/ROC Figure 或明确 skipped reason。
@@ -949,7 +1002,17 @@ plot_classification_evaluation(
 
 **目标**
 
-在不复制分类流程的前提下完成独立回归路径和任务匹配指标。
+在不复制分类流程的前提下完成独立回归路径和任务匹配指标。Task 11 的
+`TrainingResult` 保持分类专用；Task 12 冻结独立的 `RegressionTrainingResult`，
+并只扩展 `evaluate_model` 的回归分派能力。
+
+**API 决策记录**
+
+必须遵守 `docs/decisions/task12-regression-baseline-evaluation-visualization-contract.md`。
+该记录冻结回归训练/评估/绘图签名、keyword-only 参数、
+`RegressionTrainingResult`/`RegressionEvaluation` 字段、validation precedence、
+holdout-only 数据流、leakage 边界、指标/图/metadata、determinism、stable errors
+和测试合同。它不改变 Task 11 的分类结果或分类分支行为。
 
 **依赖**
 
@@ -970,9 +1033,21 @@ Task 11。
 **Public API**
 
 ```python
-train_regressor(...) -> TrainingResult
-evaluate_regressor(result: TrainingResult) -> RegressionEvaluation
-evaluate_model(result: TrainingResult) -> ClassificationEvaluation | RegressionEvaluation
+train_regressor(
+    df: pd.DataFrame,
+    target: str,
+    *,
+    features: Sequence[str] | None = None,
+    exclude_columns: Sequence[str] = (),
+    time_column: str | None = None,
+    estimator: RegressorMixin | None = None,
+    test_size: float = 0.20,
+    random_state: int | None = 42,
+) -> RegressionTrainingResult
+evaluate_regressor(result: RegressionTrainingResult) -> RegressionEvaluation
+evaluate_model(
+    result: TrainingResult | RegressionTrainingResult,
+) -> ClassificationEvaluation | RegressionEvaluation
 plot_regression_evaluation(
     result: RegressionEvaluation,
 ) -> PlotCollection
@@ -989,23 +1064,30 @@ plot_regression_evaluation(
 
 - 默认 Ridge 与自定义 regressor。
 - 与分类相同的 split-first、未知类别、缺失和 leakage 保护。
-- 非数值/缺失 target、小样本、非法 split 和 classifier 误传。
+- 非数值/缺失/非有限/常量 target、小样本、非法 split 和 classifier 误传。
 - MAE、RMSE、R² 与 sklearn metrics 一致。
 - 预测/残差表索引和 holdout 标签对齐。
 - `evaluate_classifier` 拒绝 regression，`evaluate_regressor` 拒绝 classification。
-- `evaluate_model` 严格依据 `TrainingResult.task` 分派。
-- 残差图和预测对比图；常量 target 等边界明确 skipped/报错。
+- `evaluate_model` 严格依据批准 training result 的 frozen `task` 分派。
+- 残差图和预测对比图；常量 target 稳定拒绝，valid result 恒返回两张图。
 - random_state 下结果可复现。
 
 **验收标准**
 
-- 分类与回归共享内部安全预处理构造，但保持独立训练验证和评估契约。
+- 分类与回归共享内部安全预处理构造，但保持独立训练验证、结果类型和评估契约。
 - 不新增树模型、模型搜索、交叉验证或 AutoML。
 - 所有回归指标和图只使用 holdout。
 
 ---
 
 ### Task 13 — 完整 Workflow、静态 HTML 与 CLI 收口
+
+**状态：已完成。** 最终交付完整 analysis workflow、classification/regression
+orchestration、无模型 target/task analysis、frozen `AnalysisRun`、Markdown/HTML
+report + PNG assets bundle、deterministic staging/backup/commit 与
+rollback/compensation、Figure ownership、CSV/XLSX CLI、eager root `--version` 和
+no-recomputation。最终验证基线：579 passed；Ruff check passed；Ruff format check
+passed；build passed；`git diff --check` passed；`git diff --cached --check` passed。
 
 **目标**
 
@@ -1028,14 +1110,21 @@ Tasks 06–12。
 - `docs/quickstart.md`
 - `docs/analysis-guide.md`
 - `docs/api.md`
+- `docs/decisions/task13-full-workflow-static-html-cli-contract.md`
+- `SPEC.md`
+- `IMPLEMENTATION_PLAN.md`
+- `AGENTS.md`
 
-**Public API**
+**API 决策记录与 Public API**
 
-- 在单独评审并同步 Task 13 决策后扩展 Task 05 的 `AnalysisRun`，接入已
-  实现的 analysis、feature、plot、training/evaluation 和预算结果；不得
-  在 Task 05 提前预留这些字段。
-- 完成 `generate_analysis_report(..., format="html")`。
-- 不增加新的 public workflow class 或配置系统。
+必须遵守已接受的
+`docs/decisions/task13-full-workflow-static-html-cli-contract.md`。该记录冻结
+Task 13 的正式身份、扩展后的 `AnalysisRun` 字段、`run_analysis` 签名、完整
+workflow 数据流、result-only reporting、Markdown/HTML section/asset/file 行为、
+CLI、validation、stable errors、determinism、Figure lifecycle、测试合同和本任务
+allowlist。Task 13 扩展 Task 05 的 `AnalysisRun`，接入既有 analysis、feature
+suggestion、plot、training/evaluation 和嵌套预算结果；不新增 public workflow
+class 或配置系统，`ReportArtifact` 字段保持不变。
 
 完整 CLI：
 
@@ -1047,8 +1136,16 @@ sharper analyze INPUT
   --task classification|regression
   --id-column COLUMN
   --exclude-column COLUMN
+  --feature COLUMN
+  --time-column COLUMN
+  --group-by COLUMN
+  --reference-date YYYY-MM-DD
+  --max-suggestions INTEGER
   --model / --no-model
+  --test-size FLOAT
   --random-state INTEGER
+  --overwrite / --no-overwrite
+  --debug / --no-debug
 ```
 
 **测试文件**
@@ -1061,15 +1158,33 @@ sharper analyze INPUT
 **pytest 覆盖点**
 
 - 无 target 完整分析：画像、质量、非 target 分析、特征建议和图。
+- 显式 `--group-by` 的 group comparison 及其图；未指定时记录固定 skipped。
 - 显式 target 但不建模：target relationship 存在、training/evaluation 为空。
 - 显式分类/回归建模：对应 training、evaluation 和模型图存在。
 - target candidate 永不自动触发 target-aware 分析。
 - id/exclude columns、random_state、非法参数组合和缺失列。
 - 默认预算以及每项 requested/actual/reason 披露。
 - Markdown/HTML 章节一致，HTML 转义和内部静态模板正确。
-- 图像资产保存、相对链接、输出目录、覆盖策略和写失败。
+- 图像资产保存、相对链接、输出目录、覆盖策略、deterministic staging/backup
+  rollback 和每个写失败点的最终文件状态；普通 pre-acquisition failure 与
+  residual staging/backup conflict 分别测试。前者断言无新文件系统修改、PNG、
+  staging 或 backup、Python Figures 保持 open 和精确错误；后者分别覆盖四个
+  temporary path 及多个同时残留，断言所有预存路径原样保留、无新路径/PNG、
+  final 不变、Python 不关闭 Figure、精确 `FileExistsError`，以及 CLI `finally`
+  最终关闭 Figures。
+- `AnalysisRun`/nested result/plot/Figure preflight tampering 在任何 I/O 前以
+  稳定错误拒绝，且不重算上游结果。
+- wrong `run` type（`None`、dict、任意 object 与 exact-type 要求下的 subclass）
+  精确抛出 `TypeError("run must be an AnalysisRun")`，不创建输出或关闭 Python
+  caller Figures；至少一个 tampered exact `AnalysisRun` 精确抛出
+  `ValueError("analysis run has invalid schema")`。
 - CLI 与直接 Python workflow 的章节、warnings、skipped 和预算元数据一致。
-- Excel CLI、带/不带模型、debug/普通错误输出和退出码。
+- Excel CLI、带/不带模型、root eager `--version` 与 subcommand `--version`
+  parser error、debug/普通错误输出和退出码。
+- 每个 upstream public API 的一次调用、固定顺序、无 workflow/reporting
+  recomputation、raw DataFrame 不保留及 Figure 成功/失败后关闭。
+- reporting ownership 取得前的失败保持 Python caller Figure ownership；CLI 在
+  此阶段失败时负责关闭其 workflow run 的 Figures，取得后不重复关闭。
 
 **验收标准**
 
@@ -1077,10 +1192,23 @@ sharper analyze INPUT
 - HTML 不增加第三方 renderer 或交互式依赖。
 - CLI 不包含领域算法；reporting 不重算分析；workflow 不读取或写文件。
 - 完整流程仍遵守所有 leakage 和预算规则。
+- 本任务允许文件精确以 Task 13 决策记录的 allowlist 为准；不得修改
+  `src/sharper/__init__.py`、`pyproject.toml`、依赖、上游 contracts 或生成文件。
 
 ---
 
 ### Task 14 — 文档、示例与 v0.1 发布验证
+
+**状态：已完成（Go）。** 已同步 README、CHANGELOG 和 API 文档，交付 basic 与
+baseline examples、public-surface drift tests、wheel/sdist artifact validation、独立
+clean-install、package/console/module 三重来源验证、uv offline dependency
+installation、CLI/CSV/API/examples smoke、LICENSE/README/Excel extra metadata
+验证和 CI workflow；本任务未实际发布。
+
+最终验证基线：580 tests collected；full pytest passed；Ruff check passed；Ruff
+format check passed；wheel/sdist build passed；wheel clean-install passed；sdist
+clean-install passed；examples passed；CLI smoke passed；`git diff --check` passed；
+`git diff --cached --check` passed。
 
 **目标**
 
@@ -1094,16 +1222,21 @@ Tasks 01–13。
 
 - `README.md`
 - `CHANGELOG.md`
+- `LICENSE`（仅核验；默认不得修改）
 - `docs/quickstart.md`
 - `docs/analysis-guide.md`
 - `docs/leakage.md`
 - `docs/api.md`
+- `docs/decisions/task14-release-readiness-contract.md`
 - `examples/basic_analysis.py`
 - `examples/baseline_modeling.py`
 - `tests/test_public_api.py`
 - `tests/test_distribution.py`
-- 必要的 CI 配置文件
-- `pyproject.toml`（仅发布 metadata、版本下界验证结果和测试配置）
+- `.github/workflows/ci.yml`
+- `pyproject.toml`（仅 Task 14 contract 冻结的 metadata、package-data/license inclusion 或 distribution-test 配置）
+- `SPEC.md`
+- `IMPLEMENTATION_PLAN.md`
+- `AGENTS.md`
 
 **Public API**
 
@@ -1122,16 +1255,17 @@ Tasks 01–13。
 - 每个 public function/class/dataclass 有 type hints 和完整 docstring。
 - README 与 examples 只使用 public API。
 - 两个示例在小型夹具上确定执行。
-- sdist/wheel clean install、`import sharper`、`sharper --help` 和最小分析命令。
-- 缺 Excel extra 时核心流程仍可用；安装 extra 后 Excel smoke test 通过。
-- distribution metadata、license、README 渲染和 Python 支持声明。
+- wheel/sdist 分别离线 clean install、site-packages import，以及各自临时 venv 的 console executable/module Python help/version 和最小 CSV 分析。
+- sdist 中两个 example 确定执行；wheel 运行等价 installed-public-API smoke，不宣称 examples 被 wheel 包含。
+- 缺 Excel extra 时核心流程仍可用；仅在本地依赖可用时离线安装 extra 并执行 Excel smoke。
+- distribution metadata、LICENSE/README inclusion、README content type、Python 支持声明和 entry point。
 
 **验收标准**
 
-- Python 3.10+ 支持矩阵中的所有配置通过 pytest、Ruff、build 和 clean-install smoke tests。
+- Python 3.10--3.13 的 Ubuntu CI matrix 通过 pytest、Ruff；build、distribution、examples 和 CLI smoke 至少在一个主版本提供证据。
 - README quickstart、CLI 和 examples 均可执行。
 - CHANGELOG 准确列出 v0.1 能力与已知限制。
-- 不包含 v0.2/v0.3 API、lock file、构建产物或生成报告。
+- 不包含 v0.2/v0.3 API、lock file、构建产物、生成报告、发布/upload 行为或额外 workflow 文件。
 
 ## 4. 依赖顺序总览
 

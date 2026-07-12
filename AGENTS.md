@@ -42,6 +42,10 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 - Task 07 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task07-analysis-contract.md`；改变 analysis 函数签名、结果 dataclass 字段、输出表 schema、skipped reason codes/precedence、错误消息、排序或 non-target 范围前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 07 不修改 CLI、workflow 或 reporting，不实现 target relationship、grouped analysis、visualization、feature engineering、modeling 或 evaluation。
 - Task 08 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task08-group-target-analysis-contract.md`；改变 `compare_groups`/`analyze_target_relationships` 签名、`GroupComparison`/`TargetAnalysis` 字段、输出表 schema、四条统计路径、effect size、Task 08 real-numeric 规则、固定 minimum group size、complete-case category budget、limitations vocabulary、skipped reason codes/precedence、错误消息、缺失/常量/infinity/小样本行为或排序前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 08 必须使用专用 private real-numeric predicate，complex 不进入 Task 08 numeric path；不得改变 Task 07 `_is_numeric_non_bool` 或 Task 07 public behavior。Task 08 不修改 workflow、reporting、CLI、I/O 或 Task 07 合同，不调用 Task 07 public analysis functions，不实现 visualization、feature engineering、modeling 或 evaluation。
 - Task 09 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task09-feature-engineering-contract.md`；改变两个函数签名、三个 frozen result dataclass、feature/reason/risk vocabulary、requires-fit 映射、列 eligibility/exclusion、reference date、预算、pair enumeration、命名、去重、排序、错误、物化 dtype 或 copy 行为前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 09 只依赖 pandas、numpy、Task 03 schema contracts 和 `infer_schema`；Task 07 只是 sequencing prerequisite，不得 import/call Task 07/08 public analysis functions 或计算 correlation。Task 09 不修改 workflow、reporting、CLI、I/O、analysis、pyproject 或 Tasks 01–08 合同。
+- Task 10 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task10-visualization-contract.md`；改变六个函数签名、`PlotResult`/`PlotCollection` 字段、图型、数据来源、算法、预算、metadata、排序、错误、空结果、Figure 生命周期或全局状态前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 10 只使用 seaborn + matplotlib；Task 09 仅为 sequencing prerequisite，不得绘制 feature suggestions。仅 `plot_distributions` 和 `plot_missingness` 接受 raw DataFrame，且不得调用 Task 07/08/09 public API；result-only 图不得重算统计。Task 10 不修改 workflow、reporting、CLI、I/O、analysis、features、pyproject、dependency groups 或 Tasks 01–09 contracts，也不保存文件。
+- Task 12 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task12-regression-baseline-evaluation-visualization-contract.md`；改变 `train_regressor`/`evaluate_regressor`/`evaluate_model`/`plot_regression_evaluation` 签名、`RegressionTrainingResult`/`RegressionEvaluation` 字段、validation precedence、stable errors、holdout-only 数据流、leakage 边界、metrics、预测表、图、metadata、排序、Figure 生命周期或全局状态前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 12 的 `RegressionTrainingResult` 独立于 Task 11 分类 `TrainingResult`；仅扩展 `evaluate_model` 的回归分派，不改变分类结果字段或分类分支行为。Task 12 不修改 workflow、reporting、CLI、I/O、schema、summary、quality、analysis、features、Task 10 containers/图行为、依赖或 Task 13 内容，也不保存文件。
+- Task 13 实现、测试和 API/CLI 文档必须遵守已接受的 `docs/decisions/task13-full-workflow-static-html-cli-contract.md`；改变扩展后的 `AnalysisRun` 字段、`run_analysis`/`generate_analysis_report` 签名、workflow call order 或次数、classification/regression dispatch、no-recomputation、Markdown/HTML section/asset/file 行为、CLI 参数/输出/exit code、stable errors、determinism、Figure ownership/lifecycle 或 allowlist 前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。Task 13 只编排 Tasks 03--12 public APIs；workflow 不读写或保存 raw DataFrame，reporting 不训练/评估/predict/recompute，CLI 不含领域算法；reporting 仅在冻结的 figure-ownership acquisition point 后负责关闭 workflow stored Figures，之前由 Python caller 持有且 CLI 失败路径在 `finally` 关闭。
+- Task 14 实现、测试和发布文档必须先评审并遵守 `docs/decisions/task14-release-readiness-contract.md`；它只审计既有 public surface、文档、examples、distribution 和 CI evidence，不新增 API 或改变 Tasks 03--13 behavior。Task 14 allowlist 仅为 `README.md`、`CHANGELOG.md`、`LICENSE`（仅核验）、`docs/quickstart.md`、`docs/analysis-guide.md`、`docs/leakage.md`、`docs/api.md`、`docs/decisions/task14-release-readiness-contract.md`、`examples/basic_analysis.py`、`examples/baseline_modeling.py`、`tests/test_public_api.py`、`tests/test_distribution.py`、`.github/workflows/ci.yml`、`pyproject.toml`、`SPEC.md`、`IMPLEMENTATION_PLAN.md` 与 `AGENTS.md`；不得使用“其他必要文件”等开放兜底。不得修改 `src/`、Tasks 03--13 contracts、其他 workflow files、lock file、生成物、cache 或 `docs/.DS_Store`；Task 14 不发布、tag、push 或修改核心依赖范围。
 - v0.1 默认以 `OSError` 表示文件读取失败，以 `ValueError` 表示无效参数、缺失列和非法列类型等用户输入错误；没有单独 SPEC 修改不得新增公共自定义异常体系。
 - `analytics-workflow-builder` 最早可用于 Task 03 或 Task 04，不用于 Task 01 或 Task 02。
 - `feature-engineering-builder` 不用于 Task 01、Task 02、Task 03 或 Task 04；仅在 `IMPLEMENTATION_PLAN.md` 进入 feature engineering Task 后使用。
@@ -85,6 +89,7 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 - 不在函数中随意修改全局 matplotlib 或 seaborn style。高基数、过多列和大样本必须受预算约束并披露截断/抽样。
 - v0.1 不建立多可视化后端系统，不引入 Plotly、Altair、Bokeh 或 dashboard。
 - 绘图函数应消费已有分析结果；禁止为了绘图隐藏重算统计。
+- 每张图必须创建独立 Figure；库代码不得 `show()` 或 `close()`，不得切换 backend、修改 rcParams 或调用全局 matplotlib/seaborn style/theme/palette API。
 - v0.1 必须分别覆盖分布、缺失率、相关、异常值、分组比较、target relationship、分类评估和回归评估图。
 - 空列、全缺失、常量和不适用图型应明确跳过或报可解释错误。
 - 绘图测试使用 headless backend，并关闭 Figure 防止资源泄漏。
@@ -103,31 +108,88 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 
 测试目录按领域契约组织，不要求机械复制源码树。至少覆盖正常路径、空/缺失/常量、小样本、非法列、混合类型、日期、ID-like、异常值、缺失模式、输入不变性、确定性和错误消息。数值结果与 pandas/scipy/sklearn 基准比较并使用明确容差。workflow 与 CLI 必须对同一输入产生一致章节；报告测试必须验证 Markdown/HTML 和图像链接；绘图测试必须使用 headless backend。
 
-## Project Python environment
+## Mandatory uv environment
 
-Use the project-local virtual environment for all verification commands.
+All Python-related work in this repository must use the uv-managed project virtual environment at `.venv`.
 
-Do not rely on a globally available `python` command.
-Do not fall back to system `python3` unless explicitly instructed by the user.
-Do not assume the virtual environment has already been activated.
+The canonical interpreter is:
 
-From the repository root, use:
+```text
+<repo-root>/.venv/bin/python
+```
+
+Before running tests, builds, Ruff, examples, CLI commands, or temporary Python scripts, run:
+
+```bash
+bash scripts/verify-uv-env.sh
+```
+
+All project Python commands must use one of these forms:
 
 ```bash
 .venv/bin/python -m pytest
 .venv/bin/python -m ruff check .
 .venv/bin/python -m ruff format --check .
-.venv/bin/python -m build
+.venv/bin/python -m build --no-isolation
+.venv/bin/python -m sharper.cli ...
+.venv/bin/python examples/<script>.py ...
 ```
 
-If `.venv/bin/python` is missing, pause and report that the project virtual
-environment is unavailable. Do not silently use system Python.
+Do not use `python`, `python3`, `pip`, `pip3`, system Python, Conda Python,
+another venv, `/usr/bin/python`, or `/usr/local/bin/python`. Do not treat
+missing packages in system Python as a project blocker.
+
+If the project `.venv` is missing a required test, build, lint, or development
+tool, internet installation is allowed only with:
+
+```bash
+uv pip install --python .venv/bin/python <explicit-packages>
+```
+
+Such installation must target only `.venv`, install only the minimum explicitly
+required packages, and must not use `uv add`, `uv sync`, `uv lock`, `--system`,
+`--user`, `sudo`, global tool installation, unrelated package upgrades, changes
+to `pyproject.toml` or a lock file, runtime dependency metadata, or the build
+backend. After installation, verify that each installed module is imported from
+`.venv`.
+
+The only permitted alternative interpreters are temporary wheel/sdist virtual
+environments created by distribution tests. They may be used only for artifact
+clean-install verification. The controlling test process, artifact build, Ruff,
+normal pytest, examples, and development CLI commands must still use
+`.venv/bin/python`.
+
+Any test, build, Ruff, example, or CLI result produced with the wrong
+controlling interpreter is invalid and must be rerun in `.venv`.
+
+When installing or using key tools, verify that each current-task module comes
+from `.venv`, for example:
+
+```bash
+.venv/bin/python - <<'PY'
+from pathlib import Path
+import build
+import hatchling
+
+venv = Path(".venv").resolve()
+for name, module in {"build": build, "hatchling": hatchling}.items():
+    path = Path(module.__file__).resolve()
+    try:
+        path.relative_to(venv)
+    except ValueError as exc:
+        raise SystemExit(f"{name} is outside .venv: {path}") from exc
+    print(f"{name}: {path}")
+PY
+```
+
+This is an example pattern: check the key tools actually used by the current
+task; it does not require `build` or `hatchling` for every task.
+
+Do not modify or delete `.DS_Store`, `docs/.DS_Store`, tracked `.pyc`, or
+unrelated existing workspace changes.
 
 For Task 01 clean-environment verification, use the same project-local
 interpreter unless the task explicitly requires a separate clean environment.
-
-If a command cannot be run because a dependency is missing from `.venv`, report
-the missing dependency and the exact command that failed.
 
 在 `pyproject.toml` 完成对应配置后，每个实现任务结束前运行：
 
@@ -140,7 +202,7 @@ the missing dependency and the exact command that failed.
 涉及打包、public API、CLI 或发布时，另运行：
 
 ```bash
-.venv/bin/python -m build
+.venv/bin/python -m build --no-isolation
 ```
 
 Task 01 的干净环境验证范围仅包括：wheel/sdist 可以构建、安装后可以 `import sharper`、当前公共契约要求时可以读取 `sharper.__version__`，以及 pytest smoke tests 通过。`sharper --help` 仅从 Task 05 或其他明确的 CLI task 开始验证。若当前 Task 范围内的命令或入口尚未在 `pyproject.toml` 配置，不得声称相应检查通过；应明确报告未运行原因。

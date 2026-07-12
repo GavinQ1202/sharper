@@ -1,107 +1,183 @@
-"""Integration tests for the minimal Task 05 Typer CLI."""
+# ruff: noqa: E501
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
+from matplotlib import pyplot as plt
 from typer.testing import CliRunner
 
-from sharper import generate_analysis_report, load_csv, run_analysis
+from sharper import cli
 from sharper.cli import app
+from sharper.reporting import ReportArtifact
+from sharper.workflow import run_analysis
 
 runner = CliRunner()
 
 
-def test_root_and_analyze_help() -> None:
-    root = runner.invoke(app, ["--help"])
-    assert root.exit_code == 0
-    assert "analyze" in root.stdout
-
-    analyze = runner.invoke(app, ["analyze", "--help"])
-    assert analyze.exit_code == 0
-    for text in (
-        "INPUT",
-        "--output",
-        "--target",
-        "--task",
-        "--id-column",
-        "--exclude-column",
-        "--random-state",
-        "--format",
-        "--overwrite",
-        "--no-overwrite",
-    ):
-        assert text in analyze.stdout
+def test_help_and_version() -> None:
+    assert runner.invoke(app, ["--help"]).exit_code == 0
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert result.stdout == "sharper 0.1.0\n"
 
 
-def test_analyze_success_and_python_section_consistency(tmp_path: Path) -> None:
-    input_path = tmp_path / "input.csv"
-    output_path = tmp_path / "cli.md"
-    python_path = tmp_path / "python.md"
-    pd.DataFrame({"value": [1, 2], "group": ["a", "b"]}).to_csv(input_path, index=False)
-
+def test_csv_success_and_html_bundle(tmp_path: Path) -> None:
+    source = tmp_path / "input.csv"
+    output = tmp_path / "report.html"
+    pd.DataFrame({"x": [1.0, 2.0, 3.0], "g": ["a", "b", "a"]}).to_csv(
+        source, index=False
+    )
     result = runner.invoke(
-        app,
-        ["analyze", str(input_path), "--output", str(output_path)],
+        app, ["analyze", str(source), "-o", str(output), "--format", "html"]
     )
     assert result.exit_code == 0
-    assert result.stdout == f"Report written to: {output_path}\n"
+    assert result.stdout == f"Report written to: {output}\n"
+    assert (tmp_path / "report_assets").is_dir()
+
+
+def test_cli_errors_exit_one_and_usage_exit_two(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app, ["analyze", str(tmp_path / "missing.csv"), "-o", str(tmp_path / "x.md")]
+    )
+    assert result.exit_code == 1 and result.stdout == ""
+    assert runner.invoke(app, ["analyze"]).exit_code == 2
+
+
+def test_analyze_help_lists_task13_options() -> None:
+    result = runner.invoke(app, ["analyze", "--help"])
+    assert result.exit_code == 0
+    for option in ("--feature", "--time-column", "--group-by", "--model", "--debug"):
+        assert option in result.stdout
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--version"],
+        ["--version", "--help"],
+        ["--help", "--version"],
+        ["--version", "--unknown"],
+        ["--unknown", "--version"],
+        ["--version", "analyze", "missing.csv"],
+    ],
+)
+def test_module_root_version_is_eager(arguments: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "sharper.cli", *arguments],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert result.stdout == "sharper 0.1.0\n"
     assert result.stderr == ""
 
-    generate_analysis_report(run_analysis(load_csv(input_path)), python_path)
-    cli_headings = [
-        line for line in output_path.read_text(encoding="utf-8").splitlines() if line
-    ]
-    python_headings = [
-        line for line in python_path.read_text(encoding="utf-8").splitlines() if line
-    ]
-    assert [line for line in cli_headings if line.startswith("#")] == [
-        line for line in python_headings if line.startswith("#")
-    ]
 
-
-def test_analyze_runtime_errors_use_stderr_and_exit_one(tmp_path: Path) -> None:
-    missing = runner.invoke(
-        app,
-        ["analyze", str(tmp_path / "missing.csv"), "-o", str(tmp_path / "out.md")],
+@pytest.mark.parametrize(
+    "arguments", [["analyze", "--version"], ["analyze", "missing.csv", "--version"]]
+)
+def test_module_subcommand_version_is_a_usage_error(arguments: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "sharper.cli", *arguments],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    assert missing.exit_code == 1
-    assert missing.stdout == ""
-    assert "Could not read CSV file" in missing.stderr
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "Traceback" not in result.stderr
 
-    input_path = tmp_path / "input.csv"
-    pd.DataFrame({"value": [1]}).to_csv(input_path, index=False)
-    invalid_format = runner.invoke(
+
+@pytest.mark.parametrize("mode", ["pre", "post", "success"])
+def test_cli_figure_ownership_is_exactly_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    run = run_analysis(pd.DataFrame({"x": [1.0, 2.0, 3.0], "g": ["a", "b", "a"]}))
+    plots = [
+        *run.distribution_plots.plots,
+        run.missingness_plot,
+        run.correlation_plot,
+        *run.outlier_plots.plots,
+    ]
+    owned = [plot.figure for plot in plots]
+    unrelated = plt.figure()
+    original_close = plt.close
+    closed: list[object] = []
+
+    def close(value: object = None) -> None:
+        closed.append(value)
+        original_close(value)
+
+    def loader(path: Path) -> pd.DataFrame:
+        return pd.DataFrame({"ignored": [1]})
+
+    def workflow_once(frame: pd.DataFrame, **kwargs: object):
+        return run
+
+    def report(run_: object, output: Path, **kwargs: object) -> ReportArtifact:
+        if mode == "pre":
+            raise FileExistsError("output file or asset directory already exists")
+        for figure in owned:
+            if figure.number in plt.get_fignums():
+                plt.close(figure)
+        if mode == "post":
+            error = OSError("failed to write report output")
+            error._sharper_figures_consumed = True  # type: ignore[attr-defined]
+            raise error
+        return ReportArtifact(output, "markdown", "Sharper Analysis Report")
+
+    monkeypatch.setattr(cli, "load_csv", loader)
+    monkeypatch.setattr(cli, "run_analysis", workflow_once)
+    monkeypatch.setattr(cli, "generate_analysis_report", report)
+    monkeypatch.setattr(plt, "close", close)
+    result = runner.invoke(
+        app, ["analyze", str(tmp_path / "in.csv"), "-o", str(tmp_path / "out.md")]
+    )
+    assert result.exit_code == (0 if mode == "success" else 1)
+    assert [value for value in closed if value in owned] == owned
+    assert unrelated.number in plt.get_fignums()
+    original_close(unrelated)
+
+
+@pytest.mark.parametrize("task", ["classification", "regression"])
+def test_cli_only_loads_then_calls_workflow_and_reporting_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, task: str
+) -> None:
+    calls: list[str] = []
+    run = run_analysis(pd.DataFrame({"x": [1.0, 2.0, 3.0]}))
+
+    def loader(path: Path) -> pd.DataFrame:
+        calls.append("loader")
+        return pd.DataFrame({"x": [1.0]})
+
+    def workflow_once(frame: pd.DataFrame, **kwargs: object):
+        calls.append("workflow")
+        assert kwargs["task"] == task and kwargs["include_model"] is True
+        return run
+
+    def report_once(run_: object, output: Path, **kwargs: object) -> ReportArtifact:
+        calls.append("reporting")
+        return ReportArtifact(output, "markdown", "Sharper Analysis Report")
+
+    monkeypatch.setattr(cli, "load_csv", loader)
+    monkeypatch.setattr(cli, "run_analysis", workflow_once)
+    monkeypatch.setattr(cli, "generate_analysis_report", report_once)
+    result = runner.invoke(
         app,
         [
             "analyze",
-            str(input_path),
+            str(tmp_path / "in.csv"),
             "-o",
-            str(tmp_path / "out.html"),
-            "--format",
-            "html",
+            str(tmp_path / "out.md"),
+            "--target",
+            "y",
+            "--task",
+            task,
+            "--model",
         ],
     )
-    assert invalid_format.exit_code == 1
-    assert invalid_format.stdout == ""
-    assert "only markdown reports are supported in Task 05" in invalid_format.stderr
-
-    output_path = tmp_path / "existing.md"
-    output_path.write_text("keep", encoding="utf-8")
-    no_overwrite = runner.invoke(
-        app,
-        [
-            "analyze",
-            str(input_path),
-            "-o",
-            str(output_path),
-            "--no-overwrite",
-        ],
-    )
-    assert no_overwrite.exit_code == 1
-    assert no_overwrite.stdout == ""
-    assert "output file already exists" in no_overwrite.stderr
-
-
-def test_usage_error_exit_two() -> None:
-    result = runner.invoke(app, ["analyze"])
-    assert result.exit_code == 2
+    assert result.exit_code == 0
+    assert calls == ["loader", "workflow", "reporting"]

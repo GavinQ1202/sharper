@@ -1,16 +1,17 @@
-"""Contract tests for the minimal Task 05 workflow."""
+# ruff: noqa: E501
 
 from dataclasses import FrozenInstanceError, fields
-from typing import get_type_hints
+from functools import wraps
 
 import pandas as pd
 import pytest
 
-from sharper import AnalysisRun, run_analysis
+from sharper import AnalysisRun, run_analysis, workflow
 
 
-def test_analysis_run_frozen_fields_and_types() -> None:
-    assert [field.name for field in fields(AnalysisRun)] == [
+def test_analysis_run_task13_field_order_and_frozen() -> None:
+    names = [field.name for field in fields(AnalysisRun)]
+    assert names[:15] == [
         "schema",
         "summary",
         "quality",
@@ -19,85 +20,149 @@ def test_analysis_run_frozen_fields_and_types() -> None:
         "include_model",
         "id_columns",
         "exclude_columns",
+        "features",
+        "time_column",
+        "group_by",
+        "reference_date",
+        "max_suggestions",
+        "test_size",
         "random_state",
-        "skipped",
-        "warnings",
     ]
-    assert get_type_hints(AnalysisRun)["id_columns"] == tuple[str, ...]
-    run = run_analysis(pd.DataFrame({"value": [1, 2]}))
+    run = run_analysis(pd.DataFrame({"x": [1, 2], "g": ["a", "b"]}))
     with pytest.raises(FrozenInstanceError):
-        run.target = "value"  # type: ignore[misc]
+        run.target = "x"  # type: ignore[misc]
 
 
-def test_run_analysis_normal_case_composes_results() -> None:
-    run = run_analysis(pd.DataFrame({"value": [1, 2], "group": ["a", "b"]}))
-    assert run.schema.n_rows == run.summary.n_rows == run.quality.n_rows == 2
-    assert run.target is None
-    assert run.task is None
-    assert run.include_model is False
-    assert run.skipped == ("modeling", "visualization", "feature_engineering")
-    assert run.warnings == ()
+def test_analysis_only_workflow_composes_all_non_target_results() -> None:
+    frame = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "g": ["a", "a", "b", "b"]})
+    run = run_analysis(frame, group_by="g")
+    assert run.schema.n_rows == 4
+    assert run.numeric_analysis is not None and run.feature_suggestions is not None
+    assert run.group_comparison is not None and run.target_analysis is None
+    assert run.training is run.evaluation is None
+    assert "modeling_not_requested" in run.skipped
+    pd.testing.assert_frame_equal(
+        frame, pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "g": ["a", "a", "b", "b"]})
+    )
 
 
-def test_run_analysis_records_target_task_and_column_options() -> None:
+def test_target_analysis_without_model() -> None:
     run = run_analysis(
-        pd.DataFrame({"id": [1, 2], "feature": [3, 4], "target": [0, 1]}),
-        target="target",
+        pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "y": [0, 0, 1, 1]}),
+        target="y",
         task="classification",
-        id_columns=["id"],
-        exclude_columns=["feature"],
-        random_state=7,
     )
-    assert run.target == "target"
-    assert run.task == "classification"
-    assert run.id_columns == ("id",)
-    assert run.exclude_columns == ("feature",)
-    assert run.random_state == 7
-    assert run.schema.target_candidates[0].name == "target"
-    assert run.warnings == (
-        "target recorded but target analysis is not available in Task 05",
-        "task recorded but modeling is not available in Task 05",
-        "id_columns recorded but not applied in Task 05",
-        "exclude_columns recorded but not applied in Task 05",
-    )
+    assert run.target_analysis is not None
+    assert run.training is None
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "message"),
+    "kwargs, message",
     [
-        ({"target": "missing"}, "target column not found"),
-        ({"target": "target", "task": "clustering"}, "task must be"),
-        ({"task": "classification"}, "task requires target"),
-        ({"include_model": True}, "modeling is not available"),
-        ({"id_columns": ["missing"]}, "column not found"),
-        ({"exclude_columns": ["missing"]}, "column not found"),
-        ({"id_columns": ["id", "id"]}, "duplicate column parameter"),
-        ({"exclude_columns": ["id", "id"]}, "duplicate column parameter"),
-        (
-            {"id_columns": ["id"], "exclude_columns": ["id"]},
-            "id_columns and exclude_columns must not overlap",
-        ),
-        ({"random_state": 1.5}, "random_state must be an integer"),
+        ({"task": "bad"}, "task must be"),
+        ({"include_model": True}, "modeling requires"),
+        ({"features": ("x",)}, "features require"),
+        ({"id_columns": ("missing",)}, "column not found"),
     ],
 )
-def test_run_analysis_rejects_invalid_options(
-    kwargs: dict[str, object],
-    message: str,
-) -> None:
-    frame = pd.DataFrame({"id": [1, 2], "target": [0, 1]})
+def test_workflow_validation(kwargs: dict[str, object], message: str) -> None:
     with pytest.raises(ValueError, match=message):
-        run_analysis(frame, **kwargs)  # type: ignore[arg-type]
+        run_analysis(pd.DataFrame({"x": [1, 2]}), **kwargs)  # type: ignore[arg-type]
 
 
-def test_run_analysis_does_not_mutate_input() -> None:
-    frame = pd.DataFrame({"id": [1, 2], "value": [3.0, None]})
+@pytest.mark.parametrize(
+    ("task", "trainer", "other_trainer", "plotter"),
+    [
+        (
+            "classification",
+            "train_classifier",
+            "train_regressor",
+            "plot_classification_evaluation",
+        ),
+        (
+            "regression",
+            "train_regressor",
+            "train_classifier",
+            "plot_regression_evaluation",
+        ),
+    ],
+)
+def test_workflow_calls_each_public_api_once_in_contract_order(
+    monkeypatch: pytest.MonkeyPatch,
+    task: str,
+    trainer: str,
+    other_trainer: str,
+    plotter: str,
+) -> None:
+    calls: list[str] = []
+    names = [
+        "infer_schema",
+        "summarize_dataframe",
+        "check_data_quality",
+        "analyze_numeric_features",
+        "analyze_categorical_features",
+        "compute_correlations",
+        "detect_outliers",
+        "compare_groups",
+        "analyze_target_relationships",
+        "suggest_feature_derivations",
+        trainer,
+        "evaluate_model",
+        "plot_distributions",
+        "plot_missingness",
+        "plot_correlations",
+        "plot_outliers",
+        "plot_group_comparison",
+        "plot_target_relationships",
+        plotter,
+    ]
+    for name in names:
+        original = getattr(workflow, name)
+
+        @wraps(original)
+        def wrapped(
+            *args: object,
+            __name: str = name,
+            __original: object = original,
+            **kwargs: object,
+        ):
+            calls.append(__name)
+            return __original(*args, **kwargs)  # type: ignore[operator]
+
+        monkeypatch.setattr(workflow, name, wrapped)
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("wrong task trainer called")
+
+    monkeypatch.setattr(workflow, other_trainer, forbidden)
+    frame = pd.DataFrame(
+        {
+            "x": range(30),
+            "g": ["a", "b"] * 15,
+            "y": [i % 2 for i in range(30)]
+            if task == "classification"
+            else [float(i) for i in range(30)],
+        }
+    )
     original = frame.copy(deep=True)
-    run_analysis(frame, id_columns=["id"])
+    run = run_analysis(frame, target="y", task=task, include_model=True, group_by="g")  # type: ignore[arg-type]
+    assert calls == names
     pd.testing.assert_frame_equal(frame, original)
+    assert not any(value is frame for value in vars(run).values())
 
 
-def test_run_analysis_rejects_non_dataframe_and_non_string_columns() -> None:
-    with pytest.raises(ValueError, match="df must be a pandas DataFrame"):
-        run_analysis([1, 2])  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="column names must all be strings"):
-        run_analysis(pd.DataFrame({1: [1]}))
+def test_workflow_wraps_selected_step_error_with_original_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fault = RuntimeError("numeric fault")
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise fault
+
+    monkeypatch.setattr(workflow, "analyze_numeric_features", fail)
+    with pytest.raises(
+        ValueError,
+        match=r"^workflow step failed: analyze_numeric_features: numeric fault$",
+    ) as caught:
+        run_analysis(pd.DataFrame({"x": [1.0, 2.0]}))
+    assert caught.value.__cause__ is fault

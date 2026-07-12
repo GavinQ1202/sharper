@@ -234,12 +234,12 @@ target values，也不物化。Task 09 的完整冻结规则见
 
 ## 7. 可视化能力设计
 
-v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图表。matplotlib 保留为 seaborn 的底层 backend、`Figure`/`Axes` 对象契约和 seaborn 不适用时的低级 fallback。public plot functions 按已冻结契约返回 `PlotResult`（具名 matplotlib Figure、任务、采样/截断元数据和 skipped reason）或 `PlotCollection`；不返回裸 `Axes`。图表范围包括：
+v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图表。matplotlib 保留为 seaborn 的底层 backend、`Figure`/`Axes` 对象契约和 seaborn 不适用时的低级 fallback。public plot functions 按已冻结契约返回 `PlotResult`（具名 matplotlib Figure、图型、来源、项目和稳定 metadata）或 `PlotCollection`；不返回裸 `Axes`。Task 10 的完整字段、图型、预算、metadata、错误、Figure 生命周期和全局状态规则以 `docs/decisions/task10-visualization-contract.md` 为准。图表范围包括：
 
-- 分布：数值直方图/箱线图、类别 top-N 条形图。
+- 分布：数值直方图、类别 top-N 条形图。
 - 缺失：列缺失率图；复杂缺失组合图推迟到 v0.2。
 - 相关：受 50 列上限约束的相关热图。
-- 异常值：消费 `OutlierAnalysis` 的箱线图或标记散点图。
+- 异常值：消费 `OutlierAnalysis.summary` 的每特征异常率条形图。
 - 分组比较：消费 `GroupComparison` 的组间统计图。
 - target relationship：消费 `TargetAnalysis` 的分类或回归专用图。
 - 模型评估：分类的混淆矩阵/ROC（适用时）；回归的残差/预测对比图。
@@ -249,17 +249,17 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 - API 表达分析问题，而不是镜像 `plt.hist` 等绘图原语。
 - 优先使用 seaborn 完成统计分析型图表；matplotlib 用作底层 backend、Figure/Axes 契约和低级 fallback。
 - 返回 `PlotResult` 中的 matplotlib Figure，不调用 `plt.show()`；保存由调用者或报告层负责。
-- 不在函数中随意修改全局 matplotlib 或 seaborn style；接受 `style`/`figsize` 等少量稳定参数时，样式影响必须局部且可恢复。
+- 不在函数中随意修改全局 matplotlib 或 seaborn style；其他后续任务若接受少量稳定 style/figsize 参数，样式影响必须局部且可恢复。该规则不适用于 Task 10：Task 10 仅支持冻结的六个 public signatures，不接受 `style`、`figsize`、`palette`、Axes 或 `**kwargs`。
 - v0.1 只有 seaborn + matplotlib 这一实现栈，不建立多可视化后端抽象，不引入 Plotly、Altair、Bokeh 或 dashboard。
 - 高基数类别、过多列与大样本按默认预算截断/抽样，并在结果元数据和报告中披露预算、实际数量及原因。
 - 绘图函数优先消费已计算的分析结果；不得为了绘图隐藏重算统计。
-- 空列、常量、全缺失、单类别 target 等边界应产生明确跳过记录或可解释异常。
+- collection 图在无可绘制项目时返回空 `PlotCollection`；单 `PlotResult` API 返回正常但无 data artists 的 Figure。参数、类型或冻结 result schema 非法时抛出稳定 `ValueError`。
 
 ## 8. 建模与评估设计
 
 ### 8.1 训练契约
 
-`train_classifier` 与 `train_regressor` 接受 DataFrame、显式 target、可选特征列、测试比例、随机种子和可选 estimator。内部顺序固定：
+`train_classifier` 与 `train_regressor` 接受 DataFrame、显式 target、可选特征列、用户标记的 exclusions、可选 `time_column`、测试比例、随机种子和可选 estimator；二者遇到任一声明的时间列或任一 datetime/timedelta 列均稳定拒绝，不提供 time-aware split。分类只在 Task 11 支持 stratified split；回归在 Task 12 使用非分层随机 holdout。内部顺序固定：
 
 1. 验证 target 与任务；
 2. 分离 `X/y`；
@@ -268,15 +268,15 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 5. 构造 `ColumnTransformer`：数值插补与可选缩放，类别插补与 `OneHotEncoder(handle_unknown="ignore")`；
 6. 将任何需拟合的特征变换放入 Pipeline；
 7. 仅在训练集 fit；
-8. 返回包含 fitted pipeline、split 索引、任务和 schema 快照的 `TrainingResult`。
+8. 返回包含 fitted pipeline、split 索引、任务和 schema 快照的 task-specific training result。
 
-默认 estimator 保持简单：分类使用 Logistic Regression，回归使用 Ridge。树模型、模型比较和调参推迟。
+默认 estimator 保持简单：分类使用 Logistic Regression，回归使用 Ridge。Task 11 的 `TrainingResult` 是分类专用；Task 12 的回归结果使用独立的 `RegressionTrainingResult`，不为回归伪造分类标签字段。树模型、模型比较和调参推迟。
 
 ### 8.2 独立评估
 
 - `evaluate_classifier`：accuracy、balanced accuracy、macro F1；二分类且概率可用时增加 ROC AUC。返回混淆矩阵和类别标签。
 - `evaluate_regressor`：MAE、RMSE、R²，并返回预测/残差表。
-- `evaluate_model`：便利分派函数，根据 `TrainingResult.task` 调用严格分离的实现；不允许猜测任意 estimator 的任务类型。
+- `evaluate_model`：便利分派函数，根据 `TrainingResult` 或 `RegressionTrainingResult` 的冻结 `task` 调用严格分离的实现；不允许猜测任意 estimator 的任务类型。
 - 默认只评估 holdout。训练指标可作为明确标记的诊断项，不能与测试指标混淆。
 
 ## 9. Data leakage 防护
@@ -285,14 +285,14 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 
 1. 在 train/test split 前不得 `fit` 插补器、编码器、缩放器、分箱器、特征选择器或组统计映射。
 2. target-aware 变换只能位于 Pipeline 内，并仅在训练折拟合；未来交叉验证时必须使用 out-of-fold 训练编码。
-3. target 列、其直接变体、未来信息、后验字段和用户标记的排除列不得进入特征。
-4. schema 的纯 dtype 识别可在全量 `X` 上执行，但任何数据驱动的阈值、类别词表或列选择必须由训练集决定。建模入口默认在 split 后确认这些决策。
+3. target 列、其直接变体、未来信息、后验字段和用户标记的排除列不得进入特征。Task 11 的 raw-DataFrame 训练入口以冻结的 `exclude_columns` 参数接收用户已知的后验/未来/entity 风险列；语义无法由 schema 可靠识别的风险必须由调用者显式标记，且这些列在 split、schema、feature selection 与 fit 前移除。
+4. schema 的纯 dtype 识别可在全量 `X` 上执行，但任何数据驱动的阈值、类别词表或列选择必须由训练集决定。Task 11 更严格：其 `infer_schema`、ID-like、dtype eligibility 与最终 feature eligibility 只读取 split 后的 `X_train`，绝不以完整 DataFrame 决定模型特征。建模入口默认在 split 后确认这些决策。
 5. v0.2 以后若实现 group aggregate，其映射也只能从训练行计算；未知组使用训练期全局统计或明确缺失策略。
 6. 日期特征需要用户提供观察时点/参考日期时，不得默认使用当前时间生成不可复现或未来信息。
 7. 报告必须披露 split 策略、随机种子、拟合范围、排除列和潜在泄漏警告。
 8. 测试必须使用“测试集含独有类别/极值/组”的夹具证明这些值未影响 fitted state。
 9. split 前检查重复索引与重复行；发现可能跨分区的实体重复时警告。v0.1 不声称解决 entity/group leakage。
-10. v0.1 默认仅支持随机 holdout。具有时间顺序的数据必须停止使用 v0.1 建模入口；预切分/time-aware 建模推迟到 v0.2。不得将随机切分描述为时间安全。
+10. v0.1 默认仅支持随机 holdout。Task 11 的 `time_column` 非 `None`，或输入含 datetime/timedelta 列时，必须停止使用 v0.1 建模入口并报稳定错误；预切分/time-aware 建模推迟到 v0.2。纯数值时间编码不能可靠自动识别，调用者必须通过 `time_column` 声明。不得将随机切分描述为时间安全。
 11. holdout test set 只用于最终评估，不得用于特征筛选、阈值选择、模型选择或重试决策。
 12. 默认 estimator 与 split 使用同一个 `random_state`。自定义 estimator 的随机状态由调用者设置，并记录在 `TrainingResult` 警告中。
 
@@ -316,6 +316,7 @@ v0.1 使用任务型专用函数，优先通过 seaborn 实现统计分析型图
 - `NumericAnalysis`、`CategoricalAnalysis`、`CorrelationAnalysis` 和
   `OutlierAnalysis` 在 Task 07 冻结。
 - `GroupComparison` 和 `TargetAnalysis` 在 Task 08 冻结。
+- `RegressionTrainingResult` 和 `RegressionEvaluation` 在 Task 12 冻结；其精确字段、回归验证、评估、图和 `evaluate_model` 分派规则见 `docs/decisions/task12-regression-baseline-evaluation-visualization-contract.md`。
 - 其他结果类型在 `IMPLEMENTATION_PLAN.md` 指定的对应功能 Task 中冻结。
 
 v0.1 不定义公共自定义异常体系，也不创建 `exceptions.py`。文件不存在、不可读或读取失败使用保留底层因果链的 `OSError`；无效参数、缺失列、非法列类型及其他用户输入错误使用可操作消息的 `ValueError`。若未来需要公共自定义异常，必须通过 v0.2 或单独的 SPEC 修改评审后引入。
@@ -559,6 +560,11 @@ def plot_regression_evaluation(
 ) -> PlotCollection: ...
 ```
 
+Task 10 的 `PlotResult` 与 `PlotCollection` 是 frozen dataclass，其精确字段与
+visualization 输入/输出合同以
+`docs/decisions/task10-visualization-contract.md` 为准；Task 10 不增加 feature
+suggestion plotting API。
+
 - 建议报告必须标记 leakage 风险、拟合需求、per-type/global budget 与确定性
   截断；target 和 explicit exclusions 不得成为 source columns。Task 09 不调用
   Task 07/08 analysis API，也不计算 correlation。
@@ -569,7 +575,7 @@ def plot_regression_evaluation(
   fail-fast `ValueError`。所有 validation 和临时计算成功后才统一追加新列；
   `copy=False` 的任一失败也不得留下部分修改。`copy=True` 使用 pandas
   `df.copy(deep=True)` 语义，不承诺递归复制 object-cell Python objects。
-- 绘图函数默认不显示、不保存；输入结果类型错误或非正预算报 `ValueError`。不适用的单项图返回带 skipped reason 的结果。
+- 绘图函数默认不显示、不保存；输入结果类型、冻结 result schema 或预算范围错误报稳定 `ValueError`。不适用 collection 图返回空 collection；单项图返回正常但无 data artists 的 Figure。
 
 ### 10.4 建模、评估与报告
 
@@ -579,69 +585,80 @@ def train_classifier(
     target: str,
     *,
     features: Sequence[str] | None = None,
+    exclude_columns: Sequence[str] = (),
+    time_column: str | None = None,
     estimator: ClassifierMixin | None = None,
     test_size: float = 0.20,
-    random_state: int = 42,
+    random_state: int | None = 42,
 ) -> TrainingResult: ...
 def train_regressor(
     df: pd.DataFrame,
     target: str,
     *,
     features: Sequence[str] | None = None,
+    exclude_columns: Sequence[str] = (),
+    time_column: str | None = None,
     estimator: RegressorMixin | None = None,
     test_size: float = 0.20,
-    random_state: int = 42,
-) -> TrainingResult: ...
+    random_state: int | None = 42,
+) -> RegressionTrainingResult: ...
 def evaluate_classifier(result: TrainingResult) -> ClassificationEvaluation: ...
-def evaluate_regressor(result: TrainingResult) -> RegressionEvaluation: ...
+def evaluate_regressor(result: RegressionTrainingResult) -> RegressionEvaluation: ...
 def evaluate_model(
-    result: TrainingResult,
+    result: TrainingResult | RegressionTrainingResult,
 ) -> ClassificationEvaluation | RegressionEvaluation: ...
 def run_analysis(
     df: pd.DataFrame,
     *,
     target: str | None = None,
-    task: str | None = None,
+    task: Literal["classification", "regression"] | None = None,
     include_model: bool = False,
     id_columns: Sequence[str] = (),
     exclude_columns: Sequence[str] = (),
-    random_state: int = 42,
+    features: Sequence[str] | None = None,
+    time_column: str | None = None,
+    group_by: str | None = None,
+    reference_date: str | date | datetime | pd.Timestamp | None = None,
+    max_suggestions: int = 50,
+    test_size: float = 0.20,
+    random_state: int | None = 42,
 ) -> AnalysisRun: ...
 def generate_analysis_report(
     run: AnalysisRun,
     output_path: str | Path,
     *,
     title: str = "Sharper Analysis Report",
-    format: str = "markdown",
+    format: Literal["markdown", "html"] = "markdown",
     overwrite: bool = True,
 ) -> ReportArtifact: ...
 ```
 
 - Task 05 的最薄 workflow、Markdown 和 CLI 行为以
-  `docs/decisions/task05-workflow-report-cli-contract.md` 为准。
-  `AnalysisRun` 是 `dataclass(frozen=True)`，字段顺序冻结为 `schema`、
-  `summary`、`quality`、`target`、`task`、`include_model`、`id_columns`、
-  `exclude_columns`、`random_state`、`skipped`、`warnings`；Task 05 不含
-  analysis、feature、plot、model 或 evaluation results。
+  `docs/decisions/task05-workflow-report-cli-contract.md` 为准；Task 13 的完整
+  集成、扩展 `AnalysisRun`、Markdown/HTML、assets、CLI 和 errors 以
+  `docs/decisions/task13-full-workflow-static-html-cli-contract.md` 为准。
+  Task 13 后 `AnalysisRun` 是 `dataclass(frozen=True)`，字段顺序冻结为
+  `schema`、`summary`、`quality`、调用配置、四个 non-target analysis result、
+  optional group/target result、`feature_suggestions`、optional
+  training/evaluation、`plots`、`skipped`、`warnings`、`limitations`；精确
+  annotations、None union 与 ownership 以 Task 13 决策记录为准。它不保存 raw
+  input DataFrame。
 - `ReportArtifact` 是 `dataclass(frozen=True)`，字段顺序冻结为
   `path: Path`、`format: str`、`title: str`。Task 05 只支持 Markdown，
   不包含 content、asset、时间戳或其他非确定字段。
-- Task 05 `run_analysis` 只组合 `infer_schema`、`summarize_dataframe` 和
-  `check_data_quality`；不读写文件。`include_model=True` 被拒绝；
-  target/task、id/exclude columns、random state 的验证、warning 和
-  skipped 语义以决策记录为准。
-- Task 05 `generate_analysis_report` 只渲染决策记录冻结的确定性 Markdown
-  章节，负责创建父目录和按 `overwrite` 写 UTF-8 文件。HTML 在 Task 05
-  明确报不支持，推迟到 Task 13。
+- `run_analysis` 是唯一完整 Python 编排入口：它只调用 Tasks 03--12 已冻结
+  public APIs，不读写文件、不复制算法、不保留 raw DataFrame，并以 result 嵌套
+  metadata 披露 budgets。target/task 从不自动推断；模型只在二者显式确认且
+  `include_model=True` 时执行，分类和回归严格分派。
+- `generate_analysis_report` 只消费 `AnalysisRun`，生成确定性 UTF-8 Markdown
+  或标准库静态 HTML，并将既有 Figure 导出为相对 PNG assets；它不重算分析、
+  training、evaluation、prediction、metric 或 plot。两种 format 都是报告与
+  assets bundle；精确 section、asset、overwrite、deterministic
+  staging/backup/rollback、preflight 和 Figure-close 行为以 Task 13 决策记录为准。
 - 训练入口返回 fitted Pipeline 与 holdout 数据/索引元数据，不修改输入；小样本、缺失 target、单类分类或非法 split 报 `ValueError`。
 - 分类/回归评估拒绝错误任务类型；仅消费未参与拟合的 holdout。
-- `run_analysis` 是唯一完整 Python 编排入口。Task 13 才在单独评审并扩展
-  `AnalysisRun` 合同后接入 analysis、feature suggestions、plots、可选
-  training/evaluation 和预算披露；Task 05 不预留这些字段。未显式提供
-  target/task 时绝不执行 target-aware 分析或建模。
-- 报告只消费 `AnalysisRun`。Task 05 只创建父目录和 Markdown 文件；
-  Task 13 才增加 HTML 和图像资产。领域结果不继承通用 renderer
-  hierarchy。
+- 未显式提供 target/task 时绝不执行 target-aware analysis 或建模；未指定
+  `group_by` 时不执行 group comparison。领域结果不继承通用 renderer hierarchy。
 
 最小工作流示例：
 
@@ -658,7 +675,7 @@ generate_analysis_report(
 
 ## 11. CLI 设计
 
-入口点：`sharper = "sharper.cli:app"`。该入口与 CLI help 在 `IMPLEMENTATION_PLAN.md` 的 Task 05 创建和验收；Task 01 不创建 `cli.py`、不注册脚本入口，也不验收 CLI help。
+入口点：`sharper = "sharper.cli:app"`。该入口与 CLI help 在 `IMPLEMENTATION_PLAN.md` 的 Task 05 创建和验收；Task 01 不创建 `cli.py`、不注册脚本入口，也不验收 CLI help。Task 13 冻结 root eager `sharper --version`：在首个 `analyze` 前发现 `--version` 时，stdout 为 `sharper {__version__}` 加一个换行、stderr 为空、exit code 为 0，且不读取输入或调用 workflow/reporting；`analyze` 后的 `--version` 是 exit 2 的 parser error。Figure ownership、其他 CLI precedence 与输出细节以 Task 13 决策记录为准。
 
 Task 05 只实现 Typer `analyze` 命令的 CSV → schema → summary → quality
 → Markdown 垂直切片：
@@ -740,6 +757,12 @@ Task 13 的 CLI 才默认执行 schema、摘要、质量、单变量分析、相
 共享最小夹具应覆盖：混合类型表（nullable boolean、日期字符串、ID、全缺失、常量、inf）、分类表（不平衡与测试独有类别）、已知线性关系回归表、重复实体分组表、时间顺序/未来字段表、零分母/日期 reference/列名冲突特征表，以及包含 skipped、warnings、plots 和可选 model 的 `AnalysisRun`。
 
 ## 14. 文档策略
+
+Tasks 01--14 已完成。Task 13 提供完整 workflow、Markdown/HTML report + PNG
+assets bundle 与 CLI；Task 14 完成文档、examples、wheel/sdist 构建与独立
+clean-install 发布准备验证，不新增 API 或改变 Tasks 03--13 行为。release
+readiness 已完成，但尚未发布到 PyPI；详细范围以
+`docs/decisions/task14-release-readiness-contract.md` 为准。
 
 - README：一句话价值、目标用户、能力边界、安装与 quickstart、项目状态。
 - `docs/quickstart.md`：读取到报告，以及可选建模两条完整流程。

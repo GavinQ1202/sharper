@@ -31,38 +31,28 @@ v0.1 会刻意限制算法、候选数量和图表类型，以优先保证正确
 
 ## 当前可用能力
 
-Tasks 01–09 已完成：包骨架、CSV/Excel Python API 读取、schema/summary、
+Tasks 01–13 已完成：包骨架、CSV/Excel Python API 读取、schema/summary、
 minimal data quality API、最薄 Markdown CLI，以及独立的 non-target numeric、
 categorical、correlation、outlier、group comparison 和 classification/regression
 target relationship、feature suggestion 与 safe stateless derivation Python APIs
-已可用：
+已可用。Task 13 将这些结果接入统一 workflow；Markdown 与 HTML 都写出确定性的
+报告与 PNG assets bundle，CLI 同时支持 CSV 与单 sheet XLSX：
 
 ```bash
 sharper analyze data.csv --output report.md
 ```
 
-Task 05 CLI 仍只运行 CSV → schema → summary → quality → Markdown。Task 07
-non-target analysis 尚未接入 workflow、reporting 或 CLI。
+完整 CLI 不提供 dashboard、server 或交互式 HTML，也不重算既有分析结果。
 
-Task 08 的 group comparison 与 classification/regression target relationship
-仅作为独立 Python API 提供，尚未接入 workflow、reporting 或 CLI。完整集成
-留给 Task 13。
-
-Task 09 的 feature suggestions 与 safe stateless derivation 已作为独立 Python
-API 实现，但尚未接入现有 workflow、reporting 或 CLI；完整集成留给 Task 13。
 Task 09 只物化不需要拟合状态的 arithmetic 和 timezone-naive datetime 特征；
-binning、group aggregate 与 target encoding 仍只生成不可物化的结构化建议。
-HTML、绘图和建模仍是后续任务。
+binning、group aggregate 与 target encoding 仍只生成不可物化的结构化建议。完整
+workflow 会接入既有 group/target analysis、feature suggestion、visualization 和
+classification/regression baseline results，但不会重算它们。
 
 Python API `load_excel` 可通过 optional `excel` extra 读取本地 `.xlsx`
-单 sheet。Excel 输入的 `sharper analyze input.xlsx` CLI 支持仍是后续完整
-workflow/CLI 任务。
+单 sheet；CLI 也支持本地 `.xlsx` 单 sheet 输入。
 
-## 未来完整工作流（占位）
-
-> 以下完整分析、HTML 和建模 API 尚未实现。
-
-未来 Python 工作流：
+## 完整工作流
 
 ```python
 from sharper import (
@@ -96,7 +86,7 @@ run = run_analysis(
 generate_analysis_report(run, "report.html", format="html")
 ```
 
-未来完整 CLI：
+完整 CLI：
 
 ```bash
 sharper analyze data.csv --output report.html
@@ -116,9 +106,35 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 
 ## 当前状态
 
-**状态：v0.1 实现中。** 当前已完成 Tasks 01–08。本文“未来完整工作流”中的
-HTML、特征、绘图和建模示例暂不可运行，Tasks 07–08 analysis 也尚未接入完整
-workflow/CLI。
+**状态：v0.1 已实现，Task 14 发布准备已完成。** Tasks 01–14 已完成；本地验证和
+CI 门禁已就绪，尚未发布到 PyPI。
+
+### Development environment
+
+This repository uses a uv-managed virtual environment at `.venv`.
+
+Create or update tools explicitly in that environment:
+
+```bash
+uv venv .venv
+uv pip install --python .venv/bin/python <development-tools>
+```
+
+Verify the environment before running project commands:
+
+```bash
+bash scripts/verify-uv-env.sh
+```
+
+Run Python tooling with the project interpreter:
+
+```bash
+.venv/bin/python -m pytest
+.venv/bin/python -m ruff check .
+.venv/bin/python -m build --no-isolation
+```
+
+Do not use the system Python for project validation.
 
 从源码安装开发环境：
 
@@ -126,8 +142,14 @@ workflow/CLI。
 python -m pip install -e ".[dev]"
 ```
 
+从构建产物安装而不依赖源码 checkout：
+
+```bash
+python -m pip install dist/sharper-0.1.0-py3-none-any.whl
+```
+
 Sharper 支持 Python 3.10+，使用 `src` layout。运行时依赖为 pandas、
-NumPy、SciPy、scikit-learn、matplotlib 和 Typer；Excel Python API 支持
+NumPy、SciPy、scikit-learn、matplotlib、seaborn 和 Typer；Excel Python API 支持
 使用可选依赖：
 
 ```bash
@@ -137,3 +159,8 @@ python -m pip install -e ".[excel]"
 ```
 
 依赖版本下界将在对应功能实现并通过支持矩阵验证后确定。
+
+`run_analysis(..., include_model=False)` 可在不训练模型时执行显式 target/task
+relationship analysis；设置 `include_model=True` 后，`task="classification"` 与
+`task="regression"` 分别执行对应的 split-first baseline。Markdown 和 HTML 都是
+静态报告与 PNG assets bundle，不包含 interactive dashboard 或 server。
