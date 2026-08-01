@@ -76,6 +76,13 @@ _TASK15_EXPORTS = (
     "validate_binary_risk",
     "plot_binary_risk_validation",
 )
+_TASK16_EXPORTS = (
+    "DataAuditRoles",
+    "ColumnAuditRule",
+    "DataAuditConfig",
+    "DataAuditResult",
+    "audit_data_quality",
+)
 
 
 def test_version_contract() -> None:
@@ -97,8 +104,29 @@ def test_console_entry_point_contract() -> None:
 def test_all_contains_only_implemented_public_api() -> None:
     """The v0.1 prefix stays stable and Task 15 is one separate opt-in suffix."""
     assert tuple(sharper.__all__[: len(_V01_EXPORTS)]) == _V01_EXPORTS
-    assert tuple(sharper.__all__[len(_V01_EXPORTS) :]) == _TASK15_EXPORTS
+    task15_end = len(_V01_EXPORTS) + len(_TASK15_EXPORTS)
+    assert tuple(sharper.__all__[len(_V01_EXPORTS) : task15_end]) == _TASK15_EXPORTS
+    assert tuple(sharper.__all__[task15_end:]) == _TASK16_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
+
+
+def test_task16_public_api_contract() -> None:
+    """Task 16 appends exactly five opt-in public symbols."""
+    assert str(inspect.signature(sharper.audit_data_quality)) == (
+        "(data: 'pd.DataFrame', *, reference: 'pd.DataFrame | None' = None, "
+        "roles: 'DataAuditRoles | None' = None, "
+        "config: 'DataAuditConfig | None' = None) "
+        "-> 'DataAuditResult'"
+    )
+    for data_type in (
+        sharper.DataAuditRoles,
+        sharper.ColumnAuditRule,
+        sharper.DataAuditConfig,
+        sharper.DataAuditResult,
+    ):
+        assert is_dataclass(data_type)
+        assert data_type.__dataclass_params__.frozen is True
+    assert not any(name.startswith("_Condition") for name in sharper.__all__)
 
 
 def test_task15_public_api_signatures_fields_and_export_order() -> None:
@@ -320,7 +348,11 @@ def test_task15_public_api_signatures_fields_and_export_order() -> None:
     }
     assert sharper.validate_binary_risk.__doc__
     assert sharper.plot_binary_risk_validation.__doc__
-    assert tuple(sharper.__all__[-5:]) == _TASK15_EXPORTS
+    task15_start = len(_V01_EXPORTS)
+    assert (
+        tuple(sharper.__all__[task15_start : task15_start + len(_TASK15_EXPORTS)])
+        == _TASK15_EXPORTS
+    )
 
 
 def test_load_csv_public_contract() -> None:

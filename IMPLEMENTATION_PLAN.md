@@ -4,7 +4,7 @@
 
 Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通过 review，
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
-`Approved — Go`，implementation 尚未开始。Tasks 17--20 contracts 和 implementation 均未开始；
+`Approved — Go`，implementation 已完成且 review 为 `Go`。Tasks 17--20 contracts 和 implementation 均未开始；
 v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
 v0.1 保持以下完整轻量闭环：
 
@@ -1288,8 +1288,8 @@ Tasks 01–13。
 **合同：** `docs/decisions/task15-binary-risk-validation-contract.md`（Approved — Go）。
 
 v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完成且 bounded
-closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 尚未
-开始；Tasks 17--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
+closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
+且 review 为 `Go`；Tasks 17--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
 
 **目标**
 
@@ -1327,12 +1327,12 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 
 ### Task 16 — Data Quality and Leakage Audit
 
-**状态：Contract approved — Go；implementation not started。**
+**状态：Contract Approved — Go；Implementation complete — review Go。**
 
 **合同：** `docs/decisions/task16-data-quality-leakage-contract.md`（Approved — Go）。
 
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
-尚未开始。Tasks 17--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，
+已完成且 review 为 `Go`。Tasks 17--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，
 当前 package version 仍为 `0.1.0`。
 
 **目标**

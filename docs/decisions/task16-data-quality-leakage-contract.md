@@ -6,17 +6,21 @@
 
 **批准记录：** Full contract review：`No-Go`；targeted contract fixes：`complete`；bounded
 contract closure：`Go`；P0：`0`；P1：`0`；P2：`0`。Contract：`Approved — Go`；
-Implementation：`Not started`。
+Implementation：`Implementation complete — review Go`。
 
-Task 16 合同阶段已完成；不得再次进行开放式 full contract review。后续 implementation
-必须严格遵守本批准合同。合同批准不表示 Task 16 implementation 已开始或完成，也不表示
-v0.2 已完成或发布；当前 package version 仍为 `0.1.0`。
+**实现审查记录：** Full implementation review：`No-Go`；targeted implementation fixes：
+`complete`；bounded implementation closure：`Go`；P0：`0`；P1：`0`；P2：`0`。
+
+Task 16 合同与 implementation review 阶段已完成；不得再次进行开放式 Task 16 full contract
+或 full implementation review。Task 16 尚未 commit 或发布，Task 17 尚未开始，v0.2 尚未完成
+或发布；当前 package version 仍为 `0.1.0`。
 
 **正式名称：** Task 16 — Data Quality and Leakage Audit。
 
 **基线：** commit `4ed300695a62146832c9b45c5b666fbdfa9f0e8f`；v0.1.0 已完成，
 v0.2 roadmap 为 Approved — Go，Task 15 为 Implementation complete — review Go，
-Tasks 16--20 implementation 均未开始，当前 package version 仍为 `0.1.0`。
+Task 16 implementation 已完成且 review 为 `Go`，Tasks 17--20 implementation 均未开始，
+当前 package version 仍为 `0.1.0`。
 
 本合同服从根目录 `AGENTS.md`、`SPEC.md`、`IMPLEMENTATION_PLAN.md`、
 `docs/decisions/v02-roadmap-contract.md`、Tasks 03/04 frozen schema/quality contracts 和
@@ -1667,7 +1671,7 @@ closure 确认全部关闭；closure verdict 为 `Go`，P0/P1/P2 均为 `0`。�
 
 ```text
 Contract status: Approved — Go
-Task 16 implementation: Not started
+Task 16 implementation: Implementation complete — review Go
 Tasks 17–20 contracts and implementation: Not started
 Package version: 0.1.0
 ```

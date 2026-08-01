@@ -480,3 +480,32 @@ mathematics, errors, and ownership boundaries are frozen in the
 does not add workflow/report/CLI integration, policy actions, calibration model
 fitting, or automatic cutoff selection. The package version remains `0.1.0`;
 v0.2 as a whole has not been released.
+
+## Data quality and leakage audit
+
+Task 16 adds five separate opt-in symbols: `DataAuditRoles`, `ColumnAuditRule`,
+`DataAuditConfig`, `DataAuditResult`, and `audit_data_quality`. The existing v0.1
+quality API and workflow remain unchanged.
+
+```python
+from sharper import DataAuditRoles, audit_data_quality
+
+result = audit_data_quality(
+    current,
+    reference=reference,
+    roles=DataAuditRoles(
+        target="outcome",
+        features=("income", "balance"),
+        observation_time="observed_at",
+        feature_available_time_map=(("balance", "balance_available_at"),),
+    ),
+)
+```
+
+The result contains fourteen typed evidence tables plus ordered warnings and
+limitations. Evidence status is closed to `available`, `unavailable`,
+`undefined`, `not_applicable`, and `not_verifiable`. Inputs and caller literals
+are not returned; provenance is sanitized and fingerprinted. The shared
+condition kernel remains private. Task 16 does not clean data, train a model,
+execute policy, or integrate with the current workflow, report, or CLI. The
+package remains version `0.1.0`, and v0.2 has not been released.

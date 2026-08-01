@@ -110,8 +110,9 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 CI 门禁已就绪，尚未发布到 PyPI。
 
 v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
-opt-in 二分类风险验证 API 已实现并等待 implementation diff review；Tasks 16–20 尚未
-实现，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
+opt-in 二分类风险验证 API 已实现并通过 review；Task 16 的 opt-in data audit 已实现并
+等待 implementation diff review；Tasks 17–20 尚未实现，v0.2 整体也尚未发布。当前
+package version 仍为 `0.1.0`。
 
 ## Opt-in 二分类风险验证（Task 15）
 
@@ -147,6 +148,30 @@ figure.savefig("gains.png")
 
 Figure 由 caller 持有并负责保存或关闭。Task 15 只表示该 opt-in 能力已经实现，不代表
 Tasks 16–20、v0.2 workflow/CLI integration 或 v0.2 release 已完成。
+
+## Opt-in 数据质量与泄漏审计（Task 16）
+
+Task 16 新增 `DataAuditRoles`、`ColumnAuditRule`、`DataAuditConfig`、
+`DataAuditResult` 和 `audit_data_quality`。它只返回确定性的质量、missingness、drift、
+leakage 与 point-in-time evidence，不修改输入，也不自动修复数据：
+
+```python
+from sharper import DataAuditRoles, audit_data_quality
+
+result = audit_data_quality(
+    current,
+    reference=reference,
+    roles=DataAuditRoles(
+        target="outcome",
+        features=("income", "balance"),
+        observation_time="observed_at",
+        feature_available_time_map=(("balance", "balance_available_at"),),
+    ),
+)
+```
+
+shared condition kernel 是 private implementation，不是 public DSL。Task 16 未接入现有
+workflow、report 或 CLI，也不表示 Tasks 17–20 或 v0.2 release 已完成。
 
 ### Development environment
 

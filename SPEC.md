@@ -100,7 +100,7 @@ schema -> pandas/numpy only
 
 ### 2.1 规格与实施计划的职责
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Task 15 implementation 已完成且 bounded closure review 为 `Go`；Tasks 16--20 尚未实现。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--16 implementation 已完成且 bounded closure review 为 `Go`；Tasks 17--20 尚未实现。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
 
 ## 3. 推荐目录结构
 
@@ -787,7 +787,7 @@ readiness 已完成，但尚未发布到 PyPI；详细范围以
 ## 16. v0.2 已批准路线
 
 v0.2 roadmap 已通过统一 review；Task 15 implementation review 已通过且 Task 15 已完成；
-Task 16 contract 已批准为 `Approved — Go`，其 implementation 尚未开始。Tasks 17--20
+Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成且 review 为 `Go`。Tasks 17--20
 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package version 仍为
 `0.1.0`。其权威路线合同为
 `docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何

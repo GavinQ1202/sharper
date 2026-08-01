@@ -269,12 +269,28 @@ def _smoke_artifact(
             "-c",
             "import sharper; "
             "assert sharper.__version__ == '0.1.0'; "
-            "assert set(sharper.__all__) <= set(vars(sharper))",
+            "assert set(sharper.__all__) <= set(vars(sharper)); "
+            "assert sharper.__all__[-5:] == ['DataAuditRoles', 'ColumnAuditRule', "
+            "'DataAuditConfig', 'DataAuditResult', 'audit_data_quality']; "
+            "assert not hasattr(sharper, '_ConditionNode')",
         ],
         cwd=cwd,
         environment=environment,
     )
     assert public_smoke.stdout == ""
+
+    task16_smoke = _run(
+        [
+            str(python),
+            "-c",
+            "import pandas as pd; from sharper import audit_data_quality; "
+            "r=audit_data_quality(pd.DataFrame({'x':[1.0,None]})); "
+            "assert r.n_rows == 2 and len(r.column_profile) == 1",
+        ],
+        cwd=cwd,
+        environment=environment,
+    )
+    assert task16_smoke.stdout == ""
 
     for command in (
         [str(console), "--help"],
@@ -398,6 +414,8 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
 
     with zipfile.ZipFile(wheel) as archive:
         names = archive.namelist()
+        assert "sharper/data_audit.py" in names
+        assert "sharper/_condition_kernel.py" in names
         metadata_name = next(
             name for name in names if name.endswith(".dist-info/METADATA")
         )
@@ -412,6 +430,8 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
 
     with tarfile.open(sdist) as archive:
         names = archive.getnames()
+        assert any(name.endswith("/src/sharper/data_audit.py") for name in names)
+        assert any(name.endswith("/src/sharper/_condition_kernel.py") for name in names)
         assert any(name.endswith("/LICENSE") for name in names)
         assert any(name.endswith("/examples/basic_analysis.py") for name in names)
         assert any(name.endswith("/examples/baseline_modeling.py") for name in names)

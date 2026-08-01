@@ -14,6 +14,13 @@ from sharper.analysis import (
     compute_correlations,
     detect_outliers,
 )
+from sharper.data_audit import (
+    ColumnAuditRule,
+    DataAuditConfig,
+    DataAuditResult,
+    DataAuditRoles,
+    audit_data_quality,
+)
 from sharper.evaluation import (
     ClassificationEvaluation,
     RegressionEvaluation,
@@ -120,4 +127,9 @@ __all__ = [
     "BinaryRiskValidationResult",
     "validate_binary_risk",
     "plot_binary_risk_validation",
+    "DataAuditRoles",
+    "ColumnAuditRule",
+    "DataAuditConfig",
+    "DataAuditResult",
+    "audit_data_quality",
 ]
