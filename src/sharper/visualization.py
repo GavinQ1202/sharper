@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from math import ceil, sqrt
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from pandas.api.types import (
     is_bool_dtype,
@@ -26,11 +28,15 @@ from sharper.analysis import (
     TargetAnalysis,
 )
 from sharper.evaluation import (
+    _RISK_CALIBRATION_COLUMNS,
+    _RISK_GAINS_COLUMNS,
+    _RISK_THRESHOLD_COLUMNS,
     ClassificationEvaluation,
     RegressionEvaluation,
     _validate_classification_evaluation,
     _validate_regression_evaluation,
 )
+from sharper.risk_validation import BinaryRiskValidationResult
 
 _BLUE = "#4C78A8"
 _PALETTE = (
@@ -151,6 +157,72 @@ _TEST_DTYPES = (
     "float64",
     "object",
     "object",
+)
+_RISK_GAINS_DTYPES = (
+    "text",
+    "Int64",
+    "Float64",
+    "Int64",
+    "Float64",
+    "Int64",
+    "Float64",
+    "Int64",
+    "Int64",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+)
+_RISK_CALIBRATION_DTYPES = (
+    "text",
+    "Int64",
+    "Int64",
+    "Float64",
+    "Float64",
+    "boolean",
+    "Int64",
+    "Float64",
+    "Float64",
+    "Float64",
+    "Float64",
+    "text",
+    "text",
+)
+_RISK_THRESHOLD_DTYPES = (
+    "text",
+    "Int64",
+    "text",
+    "Float64",
+    "Int64",
+    "Int64",
+    "Int64",
+    "Int64",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
+    "Float64",
+    "text",
+    "text",
 )
 
 
@@ -1148,3 +1220,444 @@ def plot_regression_evaluation(result: RegressionEvaluation) -> PlotCollection:
         truncation_reason=None,
         plots=plots,
     )
+
+
+def _risk_missing(value: object) -> bool:
+    try:
+        missing = pd.isna(value)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(missing, (bool, np.bool_)) and bool(missing)
+
+
+def _risk_finite(value: object) -> bool:
+    return (
+        isinstance(value, (int, float, np.integer, np.floating))
+        and not isinstance(value, (bool, np.bool_))
+        and np.isfinite(float(value))
+    )
+
+
+def _risk_plot_source(
+    result: BinaryRiskValidationResult, kind: str
+) -> tuple[pd.DataFrame, str]:
+    if kind in ("gains", "lift"):
+        table = result.gains
+        columns = _RISK_GAINS_COLUMNS
+        dtypes = _RISK_GAINS_DTYPES
+        order_column = "requested_fraction"
+    elif kind == "calibration":
+        table = result.calibration
+        columns = _RISK_CALIBRATION_COLUMNS
+        dtypes = _RISK_CALIBRATION_DTYPES
+        order_column = "bin_id"
+    else:
+        table = result.threshold_analysis
+        columns = _RISK_THRESHOLD_COLUMNS
+        dtypes = _RISK_THRESHOLD_DTYPES
+        order_column = "threshold"
+    actual_dtypes = (
+        tuple(str(dtype) for dtype in table.dtypes)
+        if isinstance(table, pd.DataFrame)
+        else ()
+    )
+    dtype_valid = len(actual_dtypes) == len(dtypes) and all(
+        actual in ("str", "object") if expected == "text" else actual == expected
+        for actual, expected in zip(actual_dtypes, dtypes, strict=True)
+    )
+    if (
+        not isinstance(table, pd.DataFrame)
+        or tuple(table.columns) != columns
+        or not dtype_valid
+    ):
+        raise ValueError(
+            f"binary risk validation plot table has invalid schema: {kind}"
+        )
+    return table, order_column
+
+
+def _risk_axes(title: str, xlabel: str, ylabel: str) -> tuple[Figure, object]:
+    """Create one detached non-interactive Figure without changing pyplot state."""
+    figure = Figure()
+    FigureCanvasAgg(figure)
+    axes = figure.subplots()
+    axes.set_title(title)
+    axes.set_xlabel(xlabel)
+    axes.set_ylabel(ylabel)
+    return figure, axes
+
+
+def _risk_validate_table_order(table: pd.DataFrame, kind: str, order: str) -> None:
+    seen_overall = False
+    previous_fold = -1
+    previous_value: float | int | None = None
+    for row in table.to_dict("records"):
+        scope = row["scope"]
+        fold_id = row["fold_id"]
+        if scope == "fold":
+            if seen_overall or type(fold_id) is not int or fold_id < previous_fold:
+                raise ValueError(
+                    f"binary risk validation plot table has invalid schema: {kind}"
+                )
+            if fold_id != previous_fold:
+                previous_fold = fold_id
+                previous_value = None
+        elif scope == "overall":
+            if not _risk_missing(fold_id):
+                raise ValueError(
+                    f"binary risk validation plot table has invalid schema: {kind}"
+                )
+            if not seen_overall:
+                previous_value = None
+            seen_overall = True
+        else:
+            raise ValueError(
+                f"binary risk validation plot table has invalid schema: {kind}"
+            )
+        value = row[order]
+        if not _risk_finite(value):
+            raise ValueError(
+                f"binary risk validation plot table has invalid schema: {kind}"
+            )
+        numeric = float(value)
+        if previous_value is not None and numeric <= float(previous_value):
+            raise ValueError(
+                f"binary risk validation plot table has invalid schema: {kind}"
+            )
+        previous_value = numeric
+
+
+def _risk_plot_schema_error(kind: str) -> ValueError:
+    return ValueError(f"binary risk validation plot table has invalid schema: {kind}")
+
+
+def _risk_validate_status_cell(
+    row: dict[str, object],
+    *,
+    kind: str,
+    value: str,
+    status: str,
+    reason: str,
+    allowed_reasons: tuple[str, ...],
+) -> None:
+    status_value = row[status]
+    if status_value == "available":
+        if not _risk_missing(row[reason]) or not _risk_finite(row[value]):
+            raise _risk_plot_schema_error(kind)
+    elif status_value == "undefined":
+        if not _risk_missing(row[value]) or row[reason] not in allowed_reasons:
+            raise _risk_plot_schema_error(kind)
+    else:
+        raise _risk_plot_schema_error(kind)
+
+
+def _risk_validate_status_schema(table: pd.DataFrame, kind: str) -> None:
+    for row in table.to_dict("records"):
+        if kind in ("gains", "lift"):
+            if not (
+                _risk_finite(row["requested_fraction"])
+                and 0.0 < float(row["requested_fraction"]) <= 1.0
+                and all(
+                    type(row[column]) is int and row[column] >= 0
+                    for column in (
+                        "target_count",
+                        "selected_n",
+                        "total_positive_n",
+                        "selected_positive_n",
+                    )
+                )
+                and row["selected_positive_n"] <= row["selected_n"]
+                and row["selected_positive_n"] <= row["total_positive_n"]
+                and (
+                    _risk_missing(row["boundary_score"])
+                    if row["target_count"] == 0
+                    else _risk_finite(row["boundary_score"])
+                )
+            ):
+                raise _risk_plot_schema_error(kind)
+            for value, reasons in (
+                ("event_rate", ("no_evaluable_rows",)),
+                ("capture", ("no_evaluable_rows", "zero_denominator")),
+                ("lift", ("no_evaluable_rows", "zero_denominator")),
+            ):
+                _risk_validate_status_cell(
+                    row,
+                    kind=kind,
+                    value=value,
+                    status=f"{value}_status",
+                    reason=f"{value}_reason",
+                    allowed_reasons=reasons,
+                )
+        elif kind == "calibration":
+            if not (
+                type(row["bin_id"]) is int
+                and row["bin_id"] >= 0
+                and _risk_finite(row["lower_bound"])
+                and _risk_finite(row["upper_bound"])
+                and 0.0 <= float(row["lower_bound"]) < float(row["upper_bound"]) <= 1.0
+                and type(row["upper_inclusive"]) is bool
+            ):
+                raise _risk_plot_schema_error(kind)
+            if row["status"] == "available":
+                if (
+                    not _risk_missing(row["reason"])
+                    or type(row["n_rows"]) is not int
+                    or row["n_rows"] <= 0
+                    or not all(
+                        _risk_finite(row[column])
+                        for column in (
+                            "mean_predicted_probability",
+                            "observed_event_rate",
+                            "absolute_gap",
+                            "weighted_gap",
+                        )
+                    )
+                ):
+                    raise _risk_plot_schema_error(kind)
+            elif row["status"] == "undefined" and row["reason"] == "empty_bin":
+                if row["n_rows"] != 0 or not all(
+                    _risk_missing(row[column])
+                    for column in (
+                        "mean_predicted_probability",
+                        "observed_event_rate",
+                        "absolute_gap",
+                        "weighted_gap",
+                    )
+                ):
+                    raise _risk_plot_schema_error(kind)
+            else:
+                raise _risk_plot_schema_error(kind)
+        else:
+            if row["threshold_kind"] not in (
+                "ranking_score",
+                "event_probability",
+            ) or not all(
+                type(row[column]) is int and row[column] >= 0
+                for column in ("tp", "fp", "tn", "fn")
+            ):
+                raise _risk_plot_schema_error(kind)
+            for value in (
+                "sensitivity",
+                "specificity",
+                "precision",
+                "negative_predictive_value",
+                "f1",
+                "accuracy",
+                "predicted_positive_rate",
+            ):
+                _risk_validate_status_cell(
+                    row,
+                    kind=kind,
+                    value=value,
+                    status=f"{value}_status",
+                    reason=f"{value}_reason",
+                    allowed_reasons=("no_evaluable_rows", "zero_denominator"),
+                )
+                if row[f"{value}_status"] == "available" and not (
+                    0.0 <= float(row[value]) <= 1.0
+                ):
+                    raise _risk_plot_schema_error(kind)
+
+
+def _risk_available_points(
+    table: pd.DataFrame,
+    *,
+    kind: str,
+) -> tuple[np.ndarray, tuple[np.ndarray, ...]]:
+    overall = table.loc[(table["scope"] == "overall") & table["fold_id"].isna()]
+    if overall.empty:
+        raise ValueError(
+            f"binary risk validation plot evidence is unavailable or undefined: {kind}"
+        )
+    if kind in ("gains", "lift"):
+        value_column = "capture" if kind == "gains" else "lift"
+        status_column = f"{value_column}_status"
+        reason_column = f"{value_column}_reason"
+        valid = [
+            row[status_column] == "available"
+            and _risk_missing(row[reason_column])
+            and _risk_finite(row["actual_fraction"])
+            and _risk_finite(row[value_column])
+            for row in overall.to_dict("records")
+        ]
+        if not all(valid):
+            message = (
+                "binary risk validation plot evidence is unavailable or undefined: "
+                f"{kind}"
+            )
+            raise ValueError(message)
+        return (
+            overall["actual_fraction"].to_numpy(dtype="float64"),
+            (overall[value_column].to_numpy(dtype="float64"),),
+        )
+    if kind == "calibration":
+        points: list[tuple[float, float]] = []
+        for row in overall.to_dict("records"):
+            if row["status"] == "undefined" and row["reason"] == "empty_bin":
+                if row["n_rows"] != 0 or not all(
+                    _risk_missing(row[column])
+                    for column in (
+                        "mean_predicted_probability",
+                        "observed_event_rate",
+                        "absolute_gap",
+                        "weighted_gap",
+                    )
+                ):
+                    raise ValueError(
+                        "binary risk validation plot table has invalid schema: "
+                        "calibration"
+                    )
+                continue
+            if not (
+                row["status"] == "available"
+                and _risk_missing(row["reason"])
+                and _risk_finite(row["mean_predicted_probability"])
+                and _risk_finite(row["observed_event_rate"])
+            ):
+                raise ValueError(
+                    "binary risk validation plot evidence is unavailable or undefined: "
+                    "calibration"
+                )
+            points.append(
+                (
+                    float(row["mean_predicted_probability"]),
+                    float(row["observed_event_rate"]),
+                )
+            )
+        if not points:
+            raise ValueError(
+                "binary risk validation plot evidence is unavailable or undefined: "
+                "calibration"
+            )
+        values = np.asarray(points, dtype="float64")
+        return values[:, 0], (values[:, 1],)
+    rate_columns = (
+        "predicted_positive_rate",
+        "sensitivity",
+        "precision",
+        "specificity",
+    )
+    for row in overall.to_dict("records"):
+        for column in rate_columns:
+            if not (
+                row[f"{column}_status"] == "available"
+                and _risk_missing(row[f"{column}_reason"])
+                and _risk_finite(row[column])
+            ):
+                raise ValueError(
+                    "binary risk validation plot evidence is unavailable or undefined: "
+                    "threshold"
+                )
+    return (
+        overall["threshold"].to_numpy(dtype="float64"),
+        tuple(overall[column].to_numpy(dtype="float64") for column in rate_columns),
+    )
+
+
+def plot_binary_risk_validation(
+    result: BinaryRiskValidationResult,
+    *,
+    kind: Literal["gains", "lift", "calibration", "threshold"],
+) -> Figure:
+    """Plot one frozen binary-risk validation curve without recomputation.
+
+    Parameters
+    ----------
+    result
+        An exact, schema-valid ``BinaryRiskValidationResult``.
+    kind
+        The result-only curve to create: gains, lift, calibration, or threshold.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        A newly created caller-owned Figure containing exactly one Axes.
+
+    Raises
+    ------
+    ValueError
+        If the result type, kind, source-table schema, or required evidence is
+        invalid, unavailable, or undefined.
+
+    Notes
+    -----
+    The function only reads the corresponding frozen result table. It never
+    recomputes metrics, mutates the result, displays, saves, or closes the Figure.
+
+    Examples
+    --------
+    >>> # figure = plot_binary_risk_validation(result, kind="gains")
+    >>> # figure.savefig("gains.png")  # Caller-controlled side effect.
+    """
+    if type(result) is not BinaryRiskValidationResult:
+        raise ValueError("result must be a BinaryRiskValidationResult")
+    if type(kind) is not str or kind not in (
+        "gains",
+        "lift",
+        "calibration",
+        "threshold",
+    ):
+        raise ValueError("binary risk validation plot kind is invalid")
+    table, order = _risk_plot_source(result, kind)
+    _risk_validate_table_order(table, kind, order)
+    _risk_validate_status_schema(table, kind)
+    x, y_values = _risk_available_points(table, kind=kind)
+
+    titles = {
+        "gains": ("Cumulative gains", "Selected fraction", "Cumulative event capture"),
+        "lift": ("Lift", "Selected fraction", "Lift"),
+        "calibration": (
+            "Calibration",
+            "Mean predicted probability",
+            "Observed event rate",
+        ),
+        "threshold": ("Threshold metrics", "Threshold", "Rate"),
+    }
+    title, x_label, y_label = titles[kind]
+    figure, axes = _risk_axes(title, x_label, y_label)
+    if kind == "threshold":
+        labels = (
+            "Predicted positive rate",
+            "Recall",
+            "Precision",
+            "Specificity",
+        )
+        colors = ("#4C78A8", "#F58518", "#54A24B", "#E45756")
+        for values, label, color in zip(y_values, labels, colors, strict=True):
+            axes.plot(
+                x,
+                values,
+                label=label,
+                color=color,
+                linestyle="-",
+                marker="o",
+            )
+        axes.set_ylim(0.0, 1.0)
+    else:
+        label = {
+            "gains": "Event capture",
+            "lift": "Lift",
+            "calibration": "Observed event rate",
+        }[kind]
+        axes.plot(
+            x,
+            y_values[0],
+            label=label,
+            color="#4C78A8",
+            linestyle="-",
+            marker="o",
+        )
+        reference_y = (1.0, 1.0) if kind == "lift" else (0.0, 1.0)
+        axes.plot(
+            (0.0, 1.0),
+            reference_y,
+            label="Reference",
+            color="#9E9E9E",
+            linestyle="--",
+            marker=None,
+        )
+        if kind in ("gains", "calibration"):
+            axes.set_ylim(0.0, 1.0)
+    axes.set_xlim(0.0, 1.0)
+    axes.legend()
+    return figure

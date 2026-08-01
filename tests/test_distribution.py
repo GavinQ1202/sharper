@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import shutil
@@ -503,22 +502,28 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         output_dir=outside / "sdist-examples",
     )
 
-    if importlib.util.find_spec("openpyxl") is not None:
-        excel_path = outside / "input.xlsx"
-        import pandas as pd
-
-        pd.DataFrame({"value": [1, 2]}).to_excel(excel_path, index=False)
-        result = _run(
-            [
-                str(wheel_python),
-                "-c",
-                "from pathlib import Path; from sharper import load_excel; "
-                "assert load_excel(Path('input.xlsx')).shape == (2, 1)",
-            ],
-            cwd=outside,
-            environment=_environment(wheel_venv),
-        )
-        assert result.stdout == ""
+    excel_path = outside / "input.xlsx"
+    excel_path.write_bytes(b"base-wheel optional-dependency smoke")
+    result = _run(
+        [
+            str(wheel_python),
+            "-c",
+            "from pathlib import Path\n"
+            "from sharper import load_excel\n"
+            "try:\n"
+            "    load_excel(Path('input.xlsx'))\n"
+            "except ImportError as error:\n"
+            "    assert str(error) == "
+            "'Install sharper[excel] to read Excel files'\n"
+            "else:\n"
+            "    raise AssertionError(\n"
+            "        'base wheel unexpectedly provides Excel support'\n"
+            "    )",
+        ],
+        cwd=outside,
+        environment=_environment(wheel_venv),
+    )
+    assert result.stdout == ""
 
 
 def test_build_python_rejects_external_interpreters() -> None:

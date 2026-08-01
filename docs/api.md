@@ -419,3 +419,64 @@ result type: existing `TrainingResult` goes to `evaluate_classifier`, while
 `RegressionTrainingResult` goes to `evaluate_regressor`. The complete fields,
 validation order, errors, leakage boundary, metadata, and Figure lifecycle are
 frozen in the [Task 12 contract](decisions/task12-regression-baseline-evaluation-visualization-contract.md).
+
+## Binary risk validation and diagnostics
+
+Task 15 adds a separate opt-in API. It does not change the v0.1 classification
+holdout API and is not called by the current workflow, reporting layer, or CLI.
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+from sharper import (
+    BinaryRiskValidationConfig,
+    BinaryRiskValidationResult,
+    ExternalRiskPredictions,
+    plot_binary_risk_validation,
+    validate_binary_risk,
+)
+
+config = BinaryRiskValidationConfig(
+    validation_mode="stratified_kfold",
+    n_splits=5,
+    thresholds=(0.25, 0.50, 0.75),
+    threshold_kind="event_probability",
+    operating_metric="f1",
+)
+result = validate_binary_risk(
+    frame,
+    "outcome",
+    positive_label=1,
+    config=config,
+    estimator=LogisticRegression(max_iter=1000),
+    exclude_columns=("future_value",),
+)
+figure = plot_binary_risk_validation(result, kind="calibration")
+```
+
+`validate_binary_risk` requires exactly one source: an explicit cloneable
+classifier, or `ExternalRiskPredictions` with exact row-position, fold, and
+fit-row provenance. External predictions do not require or validate feature
+columns and are aligned only by zero-based row position, including when the
+DataFrame index is duplicated.
+
+`BinaryRiskValidationResult` contains deterministic fold, prediction,
+exclusion, metric, gains, calibration, threshold, operating-point, and basic
+business-summary tables. Ranking scores are distinct from event probabilities:
+only finite `[0, 1]` probabilities mapped to the resolved positive label enter
+Brier score, fixed-epsilon log loss, calibration diagnostics, and expected-loss
+arithmetic. Time modes require an explicit outcome definition and label-maturity
+provenance. Observed-loss maturity uses its own availability column or explicit
+mature-snapshot declaration and never inherits target maturity.
+
+`plot_binary_risk_validation(result, *, kind=...)` accepts only `gains`, `lift`,
+`calibration`, or `threshold`. It reads the corresponding frozen overall table,
+creates one caller-owned matplotlib Figure, and never recomputes metrics,
+displays, saves, or closes the Figure.
+
+The exact signatures, dataclass fields, table schemas, status/reason vocabulary,
+mathematics, errors, and ownership boundaries are frozen in the
+[Task 15 contract](decisions/task15-binary-risk-validation-contract.md). Task 15
+does not add workflow/report/CLI integration, policy actions, calibration model
+fitting, or automatic cutoff selection. The package version remains `0.1.0`;
+v0.2 as a whole has not been released.

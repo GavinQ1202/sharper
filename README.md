@@ -109,6 +109,45 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 **状态：v0.1 已实现，Task 14 发布准备已完成。** Tasks 01–14 已完成；本地验证和
 CI 门禁已就绪，尚未发布到 PyPI。
 
+v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
+opt-in 二分类风险验证 API 已实现并等待 implementation diff review；Tasks 16–20 尚未
+实现，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
+
+## Opt-in 二分类风险验证（Task 15）
+
+Task 15 提供显式 estimator 或 external prediction source 的 leakage-aware validation、
+OOF evidence、ranking/probability metrics、calibration、gains/lift、预声明 threshold 分析
+与基础 exposure/loss 汇总。它不接入现有 workflow、report 或 CLI：
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+from sharper import (
+    BinaryRiskValidationConfig,
+    plot_binary_risk_validation,
+    validate_binary_risk,
+)
+
+config = BinaryRiskValidationConfig(
+    validation_mode="stratified_kfold",
+    n_splits=5,
+    thresholds=(0.20, 0.50, 0.80),
+    threshold_kind="event_probability",
+)
+result = validate_binary_risk(
+    df,
+    "outcome",
+    config=config,
+    estimator=LogisticRegression(max_iter=1000),
+    exclude_columns=("future_value",),
+)
+figure = plot_binary_risk_validation(result, kind="gains")
+figure.savefig("gains.png")
+```
+
+Figure 由 caller 持有并负责保存或关闭。Task 15 只表示该 opt-in 能力已经实现，不代表
+Tasks 16–20、v0.2 workflow/CLI integration 或 v0.2 release 已完成。
+
 ### Development environment
 
 This repository uses a uv-managed virtual environment at `.venv`.

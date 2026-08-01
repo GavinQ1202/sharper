@@ -19,6 +19,7 @@ from pandas.api.types import (
 from sklearn.base import is_regressor
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
     balanced_accuracy_score,
     f1_score,
     mean_absolute_error,
@@ -909,3 +910,712 @@ def evaluate_model(
             )
         return evaluate_regressor(result)
     raise ValueError("result must be a TrainingResult or RegressionTrainingResult")
+
+
+# Task 15 private prediction-validation and metric primitives.  These helpers
+# deliberately remain below the v0.1 public API and never fit or split data.
+_RISK_METRIC_ORDER = (
+    "roc_auc",
+    "average_precision",
+    "normalized_gini",
+    "ks_statistic",
+    "brier_score",
+    "log_loss",
+    "expected_calibration_error",
+)
+_RISK_METRIC_COLUMNS = (
+    "scope",
+    "fold_id",
+    "metric",
+    "statistic",
+    "value",
+    "at_threshold",
+    "status",
+    "reason",
+    "n_rows",
+    "n_positive",
+    "n_negative",
+)
+_RISK_GAINS_COLUMNS = (
+    "scope",
+    "fold_id",
+    "requested_fraction",
+    "target_count",
+    "boundary_score",
+    "selected_n",
+    "actual_fraction",
+    "total_positive_n",
+    "selected_positive_n",
+    "event_rate",
+    "event_rate_status",
+    "event_rate_reason",
+    "capture",
+    "capture_status",
+    "capture_reason",
+    "lift",
+    "lift_status",
+    "lift_reason",
+)
+_RISK_CALIBRATION_COLUMNS = (
+    "scope",
+    "fold_id",
+    "bin_id",
+    "lower_bound",
+    "upper_bound",
+    "upper_inclusive",
+    "n_rows",
+    "mean_predicted_probability",
+    "observed_event_rate",
+    "absolute_gap",
+    "weighted_gap",
+    "status",
+    "reason",
+)
+_RISK_THRESHOLD_COLUMNS = (
+    "scope",
+    "fold_id",
+    "threshold_kind",
+    "threshold",
+    "tp",
+    "fp",
+    "tn",
+    "fn",
+    "sensitivity",
+    "sensitivity_status",
+    "sensitivity_reason",
+    "specificity",
+    "specificity_status",
+    "specificity_reason",
+    "precision",
+    "precision_status",
+    "precision_reason",
+    "negative_predictive_value",
+    "negative_predictive_value_status",
+    "negative_predictive_value_reason",
+    "f1",
+    "f1_status",
+    "f1_reason",
+    "accuracy",
+    "accuracy_status",
+    "accuracy_reason",
+    "predicted_positive_rate",
+    "predicted_positive_rate_status",
+    "predicted_positive_rate_reason",
+)
+
+
+@dataclass(frozen=True)
+class _BinaryRiskEvaluationTables:
+    metrics: pd.DataFrame
+    gains: pd.DataFrame
+    calibration: pd.DataFrame
+    threshold_analysis: pd.DataFrame
+
+
+def _risk_frame(
+    rows: list[dict[str, object]],
+    columns: tuple[str, ...],
+    *,
+    integers: tuple[str, ...] = (),
+    floats: tuple[str, ...] = (),
+    booleans: tuple[str, ...] = (),
+) -> pd.DataFrame:
+    frame = pd.DataFrame(rows, columns=columns)
+    for column in integers:
+        frame[column] = pd.array(frame[column], dtype="Int64")
+    for column in floats:
+        frame[column] = pd.array(frame[column], dtype="Float64")
+    for column in booleans:
+        frame[column] = pd.array(frame[column], dtype="boolean")
+    return frame
+
+
+def _risk_float_array(values: object, *, probability: bool) -> np.ndarray:
+    message = (
+        "event probabilities must be finite values in [0, 1]"
+        if probability
+        else "ranking scores must be finite real values with explicit direction"
+    )
+    try:
+        raw = np.asarray(values, dtype="object")
+        if raw.ndim != 1 or any(
+            isinstance(value, (bool, np.bool_)) or not isinstance(value, Real)
+            for value in raw
+        ):
+            raise ValueError(message)
+        array = np.asarray(values, dtype="float64")
+    except (TypeError, ValueError) as error:
+        raise ValueError(message) from error
+    if array.ndim != 1 or not np.isfinite(array).all():
+        raise ValueError(message)
+    if probability and ((array < 0.0).any() or (array > 1.0).any()):
+        raise ValueError(message)
+    return array
+
+
+def _risk_calibration_rows(
+    y: np.ndarray,
+    probabilities: np.ndarray,
+    *,
+    scope: str,
+    fold_id: object,
+    bins: int,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    n_total = len(y)
+    if n_total:
+        bin_ids = np.minimum((probabilities * bins).astype(int), bins - 1)
+    else:
+        bin_ids = np.asarray([], dtype=int)
+    for bin_id in range(bins):
+        mask = bin_ids == bin_id
+        n_rows = int(mask.sum())
+        lower = bin_id / bins
+        upper = (bin_id + 1) / bins
+        if n_rows:
+            mean_probability = float(np.mean(probabilities[mask]))
+            event_rate = float(np.mean(y[mask]))
+            gap = abs(event_rate - mean_probability)
+            weighted_gap = float((n_rows / n_total) * gap)
+            status, reason = "available", pd.NA
+        else:
+            mean_probability = event_rate = gap = weighted_gap = pd.NA
+            status, reason = "undefined", "empty_bin"
+        rows.append(
+            {
+                "scope": scope,
+                "fold_id": fold_id,
+                "bin_id": bin_id,
+                "lower_bound": float(lower),
+                "upper_bound": float(upper),
+                "upper_inclusive": bin_id == bins - 1,
+                "n_rows": n_rows,
+                "mean_predicted_probability": mean_probability,
+                "observed_event_rate": event_rate,
+                "absolute_gap": gap,
+                "weighted_gap": weighted_gap,
+                "status": status,
+                "reason": reason,
+            }
+        )
+    return rows
+
+
+def _risk_direct_metric_rows(
+    y: np.ndarray,
+    scores: np.ndarray,
+    probabilities: np.ndarray | None,
+    *,
+    scope: str,
+    fold_id: object,
+    calibration_bins: int,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    n_rows = len(y)
+    n_positive = int(y.sum()) if n_rows else 0
+    n_negative = n_rows - n_positive
+    values: dict[str, tuple[object, object, str, object]] = {}
+    calibration_rows: list[dict[str, object]] = []
+    if n_rows == 0:
+        for metric in _RISK_METRIC_ORDER:
+            values[metric] = (pd.NA, pd.NA, "undefined", "no_evaluable_rows")
+        if probabilities is not None:
+            calibration_rows = _risk_calibration_rows(
+                y,
+                probabilities,
+                scope=scope,
+                fold_id=fold_id,
+                bins=calibration_bins,
+            )
+    else:
+        single_class = n_positive == 0 or n_negative == 0
+        if single_class:
+            for metric in (
+                "roc_auc",
+                "average_precision",
+                "normalized_gini",
+                "ks_statistic",
+            ):
+                values[metric] = (pd.NA, pd.NA, "undefined", "single_class")
+        else:
+            auc = float(roc_auc_score(y, scores))
+            ap = float(average_precision_score(y, scores))
+            best_ks = -1.0
+            best_threshold = float("-inf")
+            for threshold in sorted(
+                set(float(value) for value in scores), reverse=True
+            ):
+                selected = scores >= threshold
+                tpr = float(np.sum(selected & (y == 1)) / n_positive)
+                fpr = float(np.sum(selected & (y == 0)) / n_negative)
+                ks = tpr - fpr
+                if ks > best_ks:
+                    best_ks = ks
+                    best_threshold = threshold
+            values["roc_auc"] = (auc, pd.NA, "available", pd.NA)
+            values["average_precision"] = (ap, pd.NA, "available", pd.NA)
+            values["normalized_gini"] = (2.0 * auc - 1.0, pd.NA, "available", pd.NA)
+            values["ks_statistic"] = (
+                float(best_ks),
+                float(best_threshold),
+                "available",
+                pd.NA,
+            )
+        if probabilities is None:
+            for metric in (
+                "brier_score",
+                "log_loss",
+                "expected_calibration_error",
+            ):
+                values[metric] = (pd.NA, pd.NA, "unavailable", "probability_absent")
+        else:
+            clipped = np.clip(probabilities.astype("float64"), 1e-15, 1.0 - 1e-15)
+            brier = float(np.mean((probabilities - y) ** 2))
+            log_loss = float(
+                np.mean(-(y * np.log(clipped) + (1 - y) * np.log(1.0 - clipped)))
+            )
+            calibration_rows = _risk_calibration_rows(
+                y,
+                probabilities,
+                scope=scope,
+                fold_id=fold_id,
+                bins=calibration_bins,
+            )
+            ece = float(
+                sum(
+                    float(row["weighted_gap"])
+                    for row in calibration_rows
+                    if row["status"] == "available"
+                )
+            )
+            values["brier_score"] = (brier, pd.NA, "available", pd.NA)
+            values["log_loss"] = (log_loss, pd.NA, "available", pd.NA)
+            values["expected_calibration_error"] = (
+                ece,
+                pd.NA,
+                "available",
+                pd.NA,
+            )
+    rows: list[dict[str, object]] = []
+    for metric in _RISK_METRIC_ORDER:
+        value, at_threshold, status, reason = values[metric]
+        rows.append(
+            {
+                "scope": scope,
+                "fold_id": fold_id,
+                "metric": metric,
+                "statistic": "direct",
+                "value": value,
+                "at_threshold": at_threshold,
+                "status": status,
+                "reason": reason,
+                "n_rows": n_rows,
+                "n_positive": n_positive,
+                "n_negative": n_negative,
+            }
+        )
+    return rows, calibration_rows
+
+
+def _risk_gains_rows(
+    y: np.ndarray,
+    scores: np.ndarray,
+    *,
+    scope: str,
+    fold_id: object,
+    fractions: tuple[float, ...],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    n_rows = len(y)
+    total_positive = int(y.sum()) if n_rows else 0
+    for fraction in fractions:
+        if n_rows == 0:
+            rows.append(
+                {
+                    "scope": scope,
+                    "fold_id": fold_id,
+                    "requested_fraction": fraction,
+                    "target_count": 0,
+                    "boundary_score": pd.NA,
+                    "selected_n": 0,
+                    "actual_fraction": pd.NA,
+                    "total_positive_n": 0,
+                    "selected_positive_n": 0,
+                    "event_rate": pd.NA,
+                    "event_rate_status": "undefined",
+                    "event_rate_reason": "no_evaluable_rows",
+                    "capture": pd.NA,
+                    "capture_status": "undefined",
+                    "capture_reason": "no_evaluable_rows",
+                    "lift": pd.NA,
+                    "lift_status": "undefined",
+                    "lift_reason": "no_evaluable_rows",
+                }
+            )
+            continue
+        target_count = max(1, int(np.ceil(fraction * n_rows)))
+        boundary = float(np.sort(scores)[::-1][target_count - 1])
+        selected = scores >= boundary
+        selected_n = int(selected.sum())
+        selected_positive = int(y[selected].sum())
+        actual_fraction = selected_n / n_rows
+        event_rate = selected_positive / selected_n
+        if total_positive:
+            capture = selected_positive / total_positive
+            lift = capture / actual_fraction
+            capture_status = lift_status = "available"
+            capture_reason = lift_reason = pd.NA
+        else:
+            capture = lift = pd.NA
+            capture_status = lift_status = "undefined"
+            capture_reason = lift_reason = "zero_denominator"
+        rows.append(
+            {
+                "scope": scope,
+                "fold_id": fold_id,
+                "requested_fraction": fraction,
+                "target_count": target_count,
+                "boundary_score": boundary,
+                "selected_n": selected_n,
+                "actual_fraction": actual_fraction,
+                "total_positive_n": total_positive,
+                "selected_positive_n": selected_positive,
+                "event_rate": event_rate,
+                "event_rate_status": "available",
+                "event_rate_reason": pd.NA,
+                "capture": capture,
+                "capture_status": capture_status,
+                "capture_reason": capture_reason,
+                "lift": lift,
+                "lift_status": lift_status,
+                "lift_reason": lift_reason,
+            }
+        )
+    return rows
+
+
+def _risk_rate(value: int, denominator: int) -> tuple[object, str, object]:
+    if denominator == 0:
+        return pd.NA, "undefined", "zero_denominator"
+    return float(value / denominator), "available", pd.NA
+
+
+def _risk_threshold_rows(
+    y: np.ndarray,
+    values: np.ndarray,
+    *,
+    scope: str,
+    fold_id: object,
+    threshold_kind: str,
+    thresholds: tuple[float, ...],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    n_rows = len(y)
+    for threshold in thresholds:
+        selected = values >= threshold
+        tp = int(np.sum(selected & (y == 1)))
+        fp = int(np.sum(selected & (y == 0)))
+        tn = int(np.sum(~selected & (y == 0)))
+        fn = int(np.sum(~selected & (y == 1)))
+        rate_values = {
+            "sensitivity": _risk_rate(tp, tp + fn),
+            "specificity": _risk_rate(tn, tn + fp),
+            "precision": _risk_rate(tp, tp + fp),
+            "negative_predictive_value": _risk_rate(tn, tn + fn),
+            "f1": _risk_rate(2 * tp, 2 * tp + fp + fn),
+            "accuracy": _risk_rate(tp + tn, n_rows),
+            "predicted_positive_rate": _risk_rate(tp + fp, n_rows),
+        }
+        row: dict[str, object] = {
+            "scope": scope,
+            "fold_id": fold_id,
+            "threshold_kind": threshold_kind,
+            "threshold": threshold,
+            "tp": tp,
+            "fp": fp,
+            "tn": tn,
+            "fn": fn,
+        }
+        for name, (value, status, reason) in rate_values.items():
+            row[name] = value
+            row[f"{name}_status"] = status
+            row[f"{name}_reason"] = reason
+        rows.append(row)
+    return rows
+
+
+def _binary_risk_evaluation(
+    *,
+    target_values: np.ndarray,
+    evaluable: np.ndarray,
+    ranking_scores: object,
+    event_probabilities: object | None,
+    fold_ids: np.ndarray,
+    fold_order: tuple[int, ...],
+    calibration_bins: int,
+    gain_fractions: tuple[float, ...],
+    thresholds: tuple[float, ...],
+    threshold_kind: str | None,
+) -> _BinaryRiskEvaluationTables:
+    """Compute all Task 15 statistical tables from aligned frozen arrays."""
+    scores = _risk_float_array(ranking_scores, probability=False)
+    probabilities = (
+        None
+        if event_probabilities is None
+        else _risk_float_array(event_probabilities, probability=True)
+    )
+    y_all = np.asarray(target_values, dtype="int8")
+    evaluable_array = np.asarray(evaluable, dtype=bool)
+    fold_array = np.asarray(fold_ids, dtype=int)
+    n = len(scores)
+    if (
+        y_all.ndim != 1
+        or evaluable_array.ndim != 1
+        or fold_array.ndim != 1
+        or len(y_all) != n
+        or len(evaluable_array) != n
+        or len(fold_array) != n
+        or (probabilities is not None and len(probabilities) != n)
+        or not np.isin(y_all[evaluable_array], [0, 1]).all()
+    ):
+        raise ValueError("binary risk validation result has invalid schema")
+
+    metric_rows: list[dict[str, object]] = []
+    gain_rows: list[dict[str, object]] = []
+    calibration_rows: list[dict[str, object]] = []
+    threshold_rows: list[dict[str, object]] = []
+    direct_by_fold: dict[int, list[dict[str, object]]] = {}
+    scopes: list[tuple[str, object, np.ndarray]] = [
+        ("fold", fold_id, (fold_array == fold_id) & evaluable_array)
+        for fold_id in fold_order
+    ]
+    scopes.append(("overall", pd.NA, evaluable_array))
+    for scope, fold_id, mask in scopes:
+        y = y_all[mask]
+        scope_scores = scores[mask]
+        scope_probabilities = None if probabilities is None else probabilities[mask]
+        rows, bins = _risk_direct_metric_rows(
+            y,
+            scope_scores,
+            scope_probabilities,
+            scope=scope,
+            fold_id=fold_id,
+            calibration_bins=calibration_bins,
+        )
+        metric_rows.extend(rows)
+        calibration_rows.extend(bins)
+        gain_rows.extend(
+            _risk_gains_rows(
+                y,
+                scope_scores,
+                scope=scope,
+                fold_id=fold_id,
+                fractions=gain_fractions,
+            )
+        )
+        if thresholds:
+            threshold_values = (
+                scope_probabilities
+                if threshold_kind == "event_probability"
+                else scope_scores
+            )
+            if threshold_values is None:
+                raise ValueError(
+                    "event-probability thresholds require event probabilities"
+                )
+            threshold_rows.extend(
+                _risk_threshold_rows(
+                    y,
+                    threshold_values,
+                    scope=scope,
+                    fold_id=fold_id,
+                    threshold_kind=str(threshold_kind),
+                    thresholds=thresholds,
+                )
+            )
+        if scope == "fold":
+            direct_by_fold[int(fold_id)] = rows
+
+    for metric in _RISK_METRIC_ORDER:
+        available = [
+            row
+            for fold_id in fold_order
+            for row in direct_by_fold[fold_id]
+            if row["metric"] == metric and row["status"] == "available"
+        ]
+        support_rows = [
+            row
+            for fold_id in fold_order
+            for row in direct_by_fold[fold_id]
+            if row["metric"] == metric
+        ]
+        n_rows = sum(int(row["n_rows"]) for row in support_rows)
+        n_positive = sum(int(row["n_positive"]) for row in support_rows)
+        n_negative = sum(int(row["n_negative"]) for row in support_rows)
+        if available:
+            mean_value: object = float(
+                np.mean([float(row["value"]) for row in available])
+            )
+            mean_status, mean_reason = "available", pd.NA
+        else:
+            mean_value = pd.NA
+            mean_status, mean_reason = "unavailable", "no_available_folds"
+        metric_rows.append(
+            {
+                "scope": "fold_summary",
+                "fold_id": pd.NA,
+                "metric": metric,
+                "statistic": "mean",
+                "value": mean_value,
+                "at_threshold": pd.NA,
+                "status": mean_status,
+                "reason": mean_reason,
+                "n_rows": n_rows,
+                "n_positive": n_positive,
+                "n_negative": n_negative,
+            }
+        )
+        if len(available) >= 2:
+            std_value: object = float(
+                np.std([float(row["value"]) for row in available], ddof=1)
+            )
+            std_status, std_reason = "available", pd.NA
+        else:
+            std_value = pd.NA
+            std_status, std_reason = "undefined", "insufficient_available_folds"
+        metric_rows.append(
+            {
+                "scope": "fold_summary",
+                "fold_id": pd.NA,
+                "metric": metric,
+                "statistic": "sample_std",
+                "value": std_value,
+                "at_threshold": pd.NA,
+                "status": std_status,
+                "reason": std_reason,
+                "n_rows": n_rows,
+                "n_positive": n_positive,
+                "n_negative": n_negative,
+            }
+        )
+
+    return _BinaryRiskEvaluationTables(
+        metrics=_risk_frame(
+            metric_rows,
+            _RISK_METRIC_COLUMNS,
+            integers=("fold_id", "n_rows", "n_positive", "n_negative"),
+            floats=("value", "at_threshold"),
+        ),
+        gains=_risk_frame(
+            gain_rows,
+            _RISK_GAINS_COLUMNS,
+            integers=(
+                "fold_id",
+                "target_count",
+                "selected_n",
+                "total_positive_n",
+                "selected_positive_n",
+            ),
+            floats=(
+                "requested_fraction",
+                "boundary_score",
+                "actual_fraction",
+                "event_rate",
+                "capture",
+                "lift",
+            ),
+        ),
+        calibration=_risk_frame(
+            calibration_rows,
+            _RISK_CALIBRATION_COLUMNS,
+            integers=("fold_id", "bin_id", "n_rows"),
+            floats=(
+                "lower_bound",
+                "upper_bound",
+                "mean_predicted_probability",
+                "observed_event_rate",
+                "absolute_gap",
+                "weighted_gap",
+            ),
+            booleans=("upper_inclusive",),
+        ),
+        threshold_analysis=_risk_frame(
+            threshold_rows,
+            _RISK_THRESHOLD_COLUMNS,
+            integers=("fold_id", "tp", "fp", "tn", "fn"),
+            floats=(
+                "threshold",
+                "sensitivity",
+                "specificity",
+                "precision",
+                "negative_predictive_value",
+                "f1",
+                "accuracy",
+                "predicted_positive_rate",
+            ),
+        ),
+    )
+
+
+def _binary_risk_business_primitive(
+    *,
+    y: np.ndarray,
+    evaluable: np.ndarray,
+    selected: np.ndarray,
+    probabilities: np.ndarray | None,
+    exposure: np.ndarray | None,
+    observed_loss: np.ndarray | None,
+    observed_loss_mature: np.ndarray,
+    loss_fraction: np.ndarray | None,
+) -> dict[str, tuple[object, str, object]]:
+    """Compute Task 15 action-free event/exposure/loss primitives."""
+    selected = np.asarray(selected, dtype=bool)
+    evaluable_selected = selected & np.asarray(evaluable, dtype=bool)
+    n_evaluable = int(evaluable_selected.sum())
+    if n_evaluable:
+        event_rate: tuple[object, str, object] = (
+            float(np.mean(np.asarray(y)[evaluable_selected])),
+            "available",
+            pd.NA,
+        )
+    else:
+        event_rate = (pd.NA, "undefined", "no_evaluable_rows")
+    exposure_sum = (
+        (pd.NA, "unavailable", "exposure_absent")
+        if exposure is None
+        else (float(np.sum(exposure[selected])), "available", pd.NA)
+    )
+    mature_selected = selected & np.asarray(observed_loss_mature, dtype=bool)
+    if observed_loss is None:
+        observed_loss_sum = (pd.NA, "unavailable", "observed_loss_absent")
+    elif mature_selected.any():
+        observed_loss_sum = (
+            float(np.sum(observed_loss[mature_selected])),
+            "available",
+            pd.NA,
+        )
+    else:
+        observed_loss_sum = (pd.NA, "undefined", "no_evaluable_rows")
+    if probabilities is None:
+        expected_loss_sum = (pd.NA, "unavailable", "probability_absent")
+    elif exposure is None:
+        expected_loss_sum = (pd.NA, "unavailable", "exposure_absent")
+    elif loss_fraction is None:
+        expected_loss_sum = (pd.NA, "unavailable", "loss_fraction_absent")
+    else:
+        expected_loss_sum = (
+            float(
+                np.sum(
+                    probabilities[selected]
+                    * exposure[selected]
+                    * loss_fraction[selected]
+                )
+            ),
+            "available",
+            pd.NA,
+        )
+    return {
+        "event_rate": event_rate,
+        "exposure_sum": exposure_sum,
+        "observed_loss_sum": observed_loss_sum,
+        "expected_loss_sum": expected_loss_sum,
+    }

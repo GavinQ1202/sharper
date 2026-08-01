@@ -3,15 +3,79 @@
 import inspect
 from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, Literal, get_type_hints
 
+import numpy as np
 import pandas as pd
-from sklearn.base import RegressorMixin
+from matplotlib.figure import Figure
+from sklearn.base import ClassifierMixin, RegressorMixin
 
 import sharper
+
+_V01_EXPORTS = (
+    "__version__",
+    "load_csv",
+    "load_excel",
+    "ColumnSchema",
+    "TargetCandidate",
+    "SchemaReport",
+    "infer_schema",
+    "DataFrameSummary",
+    "summarize_dataframe",
+    "QualityIssue",
+    "QualityReport",
+    "check_data_quality",
+    "AnalysisRun",
+    "run_analysis",
+    "ReportArtifact",
+    "generate_analysis_report",
+    "NumericAnalysis",
+    "CategoricalAnalysis",
+    "CorrelationAnalysis",
+    "OutlierAnalysis",
+    "analyze_numeric_features",
+    "analyze_categorical_features",
+    "compute_correlations",
+    "detect_outliers",
+    "GroupComparison",
+    "TargetAnalysis",
+    "compare_groups",
+    "analyze_target_relationships",
+    "FeatureSuggestion",
+    "FeatureSuggestionReport",
+    "FeatureDerivationResult",
+    "suggest_feature_derivations",
+    "derive_features",
+    "TrainingResult",
+    "train_classifier",
+    "RegressionTrainingResult",
+    "train_regressor",
+    "ClassificationEvaluation",
+    "evaluate_classifier",
+    "RegressionEvaluation",
+    "evaluate_regressor",
+    "evaluate_model",
+    "PlotResult",
+    "PlotCollection",
+    "plot_distributions",
+    "plot_missingness",
+    "plot_correlations",
+    "plot_outliers",
+    "plot_group_comparison",
+    "plot_target_relationships",
+    "plot_classification_evaluation",
+    "plot_regression_evaluation",
+)
+_TASK15_EXPORTS = (
+    "BinaryRiskValidationConfig",
+    "ExternalRiskPredictions",
+    "BinaryRiskValidationResult",
+    "validate_binary_risk",
+    "plot_binary_risk_validation",
+)
 
 
 def test_version_contract() -> None:
@@ -31,62 +95,232 @@ def test_console_entry_point_contract() -> None:
 
 
 def test_all_contains_only_implemented_public_api() -> None:
-    """The package exports only public APIs implemented through Task 11."""
-    assert sharper.__all__ == [
-        "__version__",
-        "load_csv",
-        "load_excel",
-        "ColumnSchema",
-        "TargetCandidate",
-        "SchemaReport",
-        "infer_schema",
-        "DataFrameSummary",
-        "summarize_dataframe",
-        "QualityIssue",
-        "QualityReport",
-        "check_data_quality",
-        "AnalysisRun",
-        "run_analysis",
-        "ReportArtifact",
-        "generate_analysis_report",
-        "NumericAnalysis",
-        "CategoricalAnalysis",
-        "CorrelationAnalysis",
-        "OutlierAnalysis",
-        "analyze_numeric_features",
-        "analyze_categorical_features",
-        "compute_correlations",
-        "detect_outliers",
-        "GroupComparison",
-        "TargetAnalysis",
-        "compare_groups",
-        "analyze_target_relationships",
-        "FeatureSuggestion",
-        "FeatureSuggestionReport",
-        "FeatureDerivationResult",
-        "suggest_feature_derivations",
-        "derive_features",
-        "TrainingResult",
-        "train_classifier",
-        "RegressionTrainingResult",
-        "train_regressor",
-        "ClassificationEvaluation",
-        "evaluate_classifier",
-        "RegressionEvaluation",
-        "evaluate_regressor",
-        "evaluate_model",
-        "PlotResult",
-        "PlotCollection",
-        "plot_distributions",
-        "plot_missingness",
-        "plot_correlations",
-        "plot_outliers",
-        "plot_group_comparison",
-        "plot_target_relationships",
-        "plot_classification_evaluation",
-        "plot_regression_evaluation",
-    ]
+    """The v0.1 prefix stays stable and Task 15 is one separate opt-in suffix."""
+    assert tuple(sharper.__all__[: len(_V01_EXPORTS)]) == _V01_EXPORTS
+    assert tuple(sharper.__all__[len(_V01_EXPORTS) :]) == _TASK15_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
+
+
+def test_task15_public_api_signatures_fields_and_export_order() -> None:
+    config_fields = [
+        "validation_mode",
+        "n_splits",
+        "test_size",
+        "random_state",
+        "group_column",
+        "observation_time_column",
+        "event_time_column",
+        "outcome_end_time_column",
+        "label_available_time_column",
+        "maturity_source",
+        "prediction_horizon",
+        "prediction_horizon_column",
+        "reporting_delay",
+        "fold_cutoffs",
+        "validation_end",
+        "analysis_as_of",
+        "thresholds",
+        "threshold_kind",
+        "operating_metric",
+        "calibration_bins",
+        "gain_fractions",
+        "exposure_column",
+        "observed_loss_column",
+        "observed_loss_available_time_column",
+        "observed_loss_is_mature_snapshot",
+        "loss_fraction",
+        "exposure_unit",
+    ]
+    external_fields = [
+        "row_positions",
+        "fold_ids",
+        "fold_fit_row_positions",
+        "ranking_scores",
+        "ranking_direction",
+        "event_probabilities",
+        "probability_positive_label",
+        "probability_provenance",
+    ]
+    result_fields = [
+        "target",
+        "positive_label",
+        "validation_mode",
+        "config",
+        "prediction_scope",
+        "score_source",
+        "score_direction",
+        "probability_provenance",
+        "input_n_rows",
+        "eligible_n_rows",
+        "predicted_n_rows",
+        "evaluable_n_rows",
+        "requested_threshold_count",
+        "actual_threshold_count",
+        "observed_loss_maturity_mode",
+        "observed_loss_analysis_as_of",
+        "observed_loss_mature_n",
+        "observed_loss_excluded_n",
+        "folds",
+        "predictions",
+        "excluded_rows",
+        "metrics",
+        "gains",
+        "calibration",
+        "threshold_analysis",
+        "operating_point",
+        "business_metrics",
+        "warnings",
+        "limitations",
+    ]
+    for data_type, names in (
+        (sharper.BinaryRiskValidationConfig, config_fields),
+        (sharper.ExternalRiskPredictions, external_fields),
+        (sharper.BinaryRiskValidationResult, result_fields),
+    ):
+        assert is_dataclass(data_type)
+        assert data_type.__dataclass_params__.frozen is True
+        assert [field.name for field in fields(data_type)] == names
+        assert data_type.__doc__
+        assert "shallow frozen" in data_type.__doc__.lower()
+
+    mode = Literal[
+        "stratified_holdout",
+        "stratified_kfold",
+        "group_holdout",
+        "group_kfold",
+        "time_holdout",
+        "time_forward",
+    ]
+    config_hints = {
+        "validation_mode": mode,
+        "n_splits": int | None,
+        "test_size": float | None,
+        "random_state": int,
+        "group_column": str | None,
+        "observation_time_column": str | None,
+        "event_time_column": str | None,
+        "outcome_end_time_column": str | None,
+        "label_available_time_column": str | None,
+        "maturity_source": Literal[
+            "label_available_time", "observation_horizon", "outcome_end"
+        ]
+        | None,
+        "prediction_horizon": timedelta | None,
+        "prediction_horizon_column": str | None,
+        "reporting_delay": timedelta,
+        "fold_cutoffs": tuple[datetime, ...],
+        "validation_end": datetime | None,
+        "analysis_as_of": datetime | None,
+        "thresholds": tuple[float, ...],
+        "threshold_kind": Literal["ranking_score", "event_probability"] | None,
+        "operating_metric": Literal[
+            "sensitivity", "specificity", "precision", "negative_predictive_value", "f1"
+        ]
+        | None,
+        "calibration_bins": int,
+        "gain_fractions": tuple[float, ...],
+        "exposure_column": str | None,
+        "observed_loss_column": str | None,
+        "observed_loss_available_time_column": str | None,
+        "observed_loss_is_mature_snapshot": bool,
+        "loss_fraction": float | str | None,
+        "exposure_unit": str | None,
+    }
+    external_hints = {
+        "row_positions": tuple[int, ...],
+        "fold_ids": tuple[int, ...],
+        "fold_fit_row_positions": tuple[tuple[int, tuple[int, ...]], ...],
+        "ranking_scores": tuple[float, ...] | None,
+        "ranking_direction": Literal["higher_risk", "lower_risk"] | None,
+        "event_probabilities": tuple[float, ...] | None,
+        "probability_positive_label": str | int | bool | np.generic | None,
+        "probability_provenance": Literal[
+            "predict_proba", "fold_safe_calibrated", "external_declared"
+        ]
+        | None,
+    }
+    result_hints = {
+        "target": str,
+        "positive_label": str | int | bool,
+        "validation_mode": mode,
+        "config": sharper.BinaryRiskValidationConfig,
+        "prediction_scope": Literal["validation", "oof"],
+        "score_source": Literal[
+            "estimator_predict_proba",
+            "estimator_decision_function",
+            "external_ranking_score",
+            "external_event_probability",
+            "external_ranking_and_probability",
+        ],
+        "score_direction": Literal["higher_positive_event_risk"],
+        "probability_provenance": Literal[
+            "predict_proba", "fold_safe_calibrated", "external_declared"
+        ]
+        | None,
+        "input_n_rows": int,
+        "eligible_n_rows": int,
+        "predicted_n_rows": int,
+        "evaluable_n_rows": int,
+        "requested_threshold_count": int,
+        "actual_threshold_count": int,
+        "observed_loss_maturity_mode": Literal[
+            "not_provided", "availability_column", "mature_snapshot"
+        ],
+        "observed_loss_analysis_as_of": datetime | None,
+        "observed_loss_mature_n": int,
+        "observed_loss_excluded_n": int,
+        "folds": pd.DataFrame,
+        "predictions": pd.DataFrame,
+        "excluded_rows": pd.DataFrame,
+        "metrics": pd.DataFrame,
+        "gains": pd.DataFrame,
+        "calibration": pd.DataFrame,
+        "threshold_analysis": pd.DataFrame,
+        "operating_point": pd.DataFrame,
+        "business_metrics": pd.DataFrame,
+        "warnings": tuple[str, ...],
+        "limitations": tuple[str, ...],
+    }
+    assert get_type_hints(sharper.BinaryRiskValidationConfig) == config_hints
+    assert get_type_hints(sharper.ExternalRiskPredictions) == external_hints
+    assert get_type_hints(sharper.BinaryRiskValidationResult) == result_hints
+
+    signature = inspect.signature(sharper.validate_binary_risk)
+    assert list(signature.parameters) == [
+        "df",
+        "target",
+        "positive_label",
+        "config",
+        "estimator",
+        "external_predictions",
+        "features",
+        "exclude_columns",
+    ]
+    assert signature.parameters["positive_label"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["config"].kind is inspect.Parameter.KEYWORD_ONLY
+    hints = get_type_hints(sharper.validate_binary_risk)
+    assert hints == {
+        "df": pd.DataFrame,
+        "target": str,
+        "positive_label": str | int | bool | np.generic | None,
+        "config": sharper.BinaryRiskValidationConfig,
+        "estimator": ClassifierMixin | None,
+        "external_predictions": sharper.ExternalRiskPredictions | None,
+        "features": Sequence[str] | None,
+        "exclude_columns": Sequence[str],
+        "return": sharper.BinaryRiskValidationResult,
+    }
+    plot_signature = inspect.signature(sharper.plot_binary_risk_validation)
+    assert list(plot_signature.parameters) == ["result", "kind"]
+    assert plot_signature.parameters["kind"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert get_type_hints(sharper.plot_binary_risk_validation) == {
+        "result": sharper.BinaryRiskValidationResult,
+        "kind": Literal["gains", "lift", "calibration", "threshold"],
+        "return": Figure,
+    }
+    assert sharper.validate_binary_risk.__doc__
+    assert sharper.plot_binary_risk_validation.__doc__
+    assert tuple(sharper.__all__[-5:]) == _TASK15_EXPORTS
 
 
 def test_load_csv_public_contract() -> None:

@@ -33,7 +33,7 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 
 ## 任务执行与专项 skill 边界
 
-- `IMPLEMENTATION_PLAN.md` 是 v0.1 的任务拆分、允许文件、验收标准和实现顺序的执行依据；`SPEC.md` 定义产品与最终能力。两者冲突时先修订文档，不在实现中自行扩大或合并 Task。
+- `IMPLEMENTATION_PLAN.md` 是 Tasks 01--14 已完成 v0.1 与 Tasks 15--20 已批准 v0.2 的任务拆分、验收边界和实现顺序依据；`SPEC.md` 定义产品与最终能力。治理文件冲突时先同步并评审文档，不在实现中自行扩大、合并或跨 Task 提前实现。
 - Task 01 只建立打包、工具配置和最小 import/version/`__all__` 契约；不冻结领域结果类型，不创建自定义异常体系或 CLI。
 - `SchemaReport`、列 schema 结果和 `DataFrameSummary` 在 Task 03 冻结；`QualityIssue` 与 `QualityReport` 已由 Task 04 API 决策记录冻结，并在 Task 04 首次实现。
 - Task 04 实现、测试和 API 文档必须遵守已接受的 `docs/decisions/task04-quality-contract.md`；改变冻结字段、code、severity、规则、阈值、文本或排序前，必须先同步更新并评审该记录、`SPEC.md` 和 `IMPLEMENTATION_PLAN.md`。
@@ -50,6 +50,17 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 - `analytics-workflow-builder` 最早可用于 Task 03 或 Task 04，不用于 Task 01 或 Task 02。
 - `feature-engineering-builder` 不用于 Task 01、Task 02、Task 03 或 Task 04；仅在 `IMPLEMENTATION_PLAN.md` 进入 feature engineering Task 后使用。
 - `visualization-system-builder` 不用于 Task 01，也不用于尚未进入 visualization Task 的工作。
+
+## v0.2 长期治理不变量
+
+- v0.2 开发必须遵守已批准的 `docs/decisions/v02-roadmap-contract.md`、`SPEC.md`、`IMPLEMENTATION_PLAN.md` 和当前 Task 独立合同；每个新 Task 严格按 contract -> review -> implementation -> diff review -> final Go 推进。
+- Tasks 17、18、19 必须使用独立聚焦模块；现有 `analysis.py` 不得扩张为 risk、policy、warning 或 lifecycle catch-all。Task 19 只消费 Tasks 15--18 frozen results，Task 20 只编排 workflow/report/CLI，不得承载领域算法。
+- point-in-time 监督验证必须显式验证 label maturity；time fold 训练行同时满足 `observation_time < fold_cutoff` 与 `label_available_time <= fold_cutoff`，未成熟标签不得进入 fit、metrics、calibration 或 loss denominator。
+- `ranking_score` 只用于排序、bands 和 cutoff 分析；只有 `[0, 1]` 内且对应显式正类的 `event_probability` 可用于 calibration 和 expected loss/revenue/payoff。不得把 margin、`decision_function` 或一般 score 自动当作概率。
+- Task 16 是 private closed condition kernel 与 missingness drift 的唯一 owner；Tasks 17/18 只消费 kernel，Task 19 只消费 frozen missingness evidence，不得重复实现或重算。
+- condition kernel 不得成为 public DSL，也不得接受 `eval`、任意 Python、callable、函数、脚本、插件或动态 operator；Task 20 CLI 只允许版本化、封闭、纯数据 JSON 载体。
+- v0.2 不研究、不规划、不实现反欺诈，且不把反欺诈列为本路线延期项。不得执行真实审批、账户操作、客户联系或催收动作。
+- v0.1 signatures、dataclass fields、默认行为、errors、reports、CLI 和既有 exports 必须保持兼容；v0.2 使用 opt-in 入口，不得通过删除或弱化 v0.1 测试完成迁移。
 
 ## Leakage 不变量
 
@@ -107,6 +118,57 @@ Sharper 是结构化表格数据的综合分析工具包，覆盖读取、质量
 ## 测试与质量检查
 
 测试目录按领域契约组织，不要求机械复制源码树。至少覆盖正常路径、空/缺失/常量、小样本、非法列、混合类型、日期、ID-like、异常值、缺失模式、输入不变性、确定性和错误消息。数值结果与 pandas/scipy/sklearn 基准比较并使用明确容差。workflow 与 CLI 必须对同一输入产生一致章节；报告测试必须验证 Markdown/HTML 和图像链接；绘图测试必须使用 headless backend。
+
+## Review Scope, Full Audits, and Closure
+
+### 默认范围与 scope declaration
+
+- 所有审查默认采用能够可靠验证当前变更的最小范围；范围必须匹配工作类型、修改文件和风险，不得仅为继续寻找问题而重复 full audit。已通过独立审查且未被当前修改触及的领域默认保持关闭，后续修复优先使用 targeted review 或 bounded closure review。
+- 每次审查开始时，prompt/报告必须明确 review mode、in-scope files/findings、允许重新打开的结论、明确排除领域、阻塞条件和终止条件；未声明 scope 时不得自行扩张为 full audit。
+- 最小审查范围只限制 review 扩围，不削弱当前合同要求的测试、uv 环境、allowlist、compatibility 或 release-readiness 门禁。
+
+### Review modes
+
+- **Targeted review**：用于单个或少量已知 finding、单一行为/错误/schema 边界、定向测试或文档/状态/distribution gate 修复。只验证 finding 是否关闭、直接行为、直接回归及必要门禁，不重审无关合同或模块。
+- **Bounded closure review**：用于一次完整审查后的收口。scope 冻结为未关闭 findings；已关闭结论不得重开，只检查直接回归。除新 P0、与修改直接相关且有证据的 P1 或已接受假设变化外，新观察记为非阻塞 backlog；满足终止条件后必须给出 `Go`。
+- **Full audit**：重新检查完整合同、跨模块 ownership、实现、测试、兼容性和必要门禁。仅在新 Task 精确合同首次批准、实现完成后的首次独立 review、跨领域架构变更、public API/schema/持久化格式/依赖/版本/distribution contract 变化、validation/OOF/point-in-time/label-maturity/row-alignment 等系统性语义变化、有证据表明遗漏系统性 P0/P1、major phase boundary、release-readiness/实际发布前或用户明确要求时使用。
+- **Release-readiness audit**：在版本或阶段发布前检查完整 tests、lint/format、build、wheel/sdist clean install、distribution smoke、version/metadata、文档状态、compatibility invariants 和 release checklist；除发现真实 P0/P1 外，不重新设计已批准合同。
+- “可能还有问题”“测试可以更严格”或“再全面看看”不是 full-audit 触发条件。修复已知 findings、加强定向测试、修改 error/reason/validation precedence、单一 plot/dtype/resource/status/Markdown/format/distribution-environment 问题、批准 allowlist 内调整、不改变 public API/schema/dependency/ownership 的局部重构，以及上一轮 full review 后的剩余收口，默认使用 targeted 或 bounded closure review。
+
+### 已关闭结论与证据标准
+
+- 已接受的 finding、模块或合同条款仅在当前修改直接触及、有可复现 P0/P1、先前假设变化、public API/schema/ownership/dependency/execution model 变化、用户明确要求或正式 release-readiness audit 时可重开。不得仅因 reviewer 想到更强的测试方式而否定已接受证据。
+- 验收要求在合同或首次 full audit 中冻结。已接受的实现与测试不得仅因还能增加 spy、fixture、边界值或 artist assertion 而重新阻塞；只有能给出现有测试会让错误实现错误通过的具体示例时，才可要求补充阻塞证据。可选测试、防御性检查和维护建议记为 backlog；测试数量或证明形式不是目标。
+
+### Finding 等级与证据
+
+- **P0 — Critical blocker**：包括 train/validation、时间标签或 observed-loss 泄漏，prediction/target 错位，ranking score 被当作 probability，核心数学系统性错误，数据损坏，严重安全问题或 v0.1 核心 public behavior 严重破坏；任何 P0 均为 `No-Go`。
+- **P1 — Required blocker**：包括批准的 public API/schema 不一致、当前核心功能违反合同、必需 validation/boundary 缺失、ownership 冲突/重复实现、必需门禁失败、明确 compatibility 回归或 distribution/artifact 隔离实质削弱。P1 必须与当前 scope 直接相关并有可复现证据。
+- **P2 — Non-blocking backlog**：包括不影响正确性的额外测试、防御性校验、非关键文档/状态/错误文本、维护性重构或 bounded scope 外的边缘观察；默认不阻塞，除非其正是当前文档/状态任务的验收目标。
+- **P3 — Style or optional improvement**：包括命名、格式、注释、非必要重构、convenience API 或视觉偏好；不得阻塞。
+- 每个 P0/P1 必须同时给出准确文件和行范围、可复现输入/触发方式、预期行为、实际行为、违反的合同/治理/兼容要求、为何属于当前 scope 以及最小修复方向。推测、偏好或无复现的风险不得列为 P0/P1。
+
+### Task 生命周期、收口与扩围
+
+每个 Task 默认遵循：
+
+```text
+roadmap/governance approval
+-> contract drafting
+-> one full contract review
+-> targeted contract fixes
+-> bounded contract closure
+-> contract approval
+-> implementation
+-> one full implementation review
+-> targeted implementation fixes
+-> bounded implementation closure
+-> final Task Go
+```
+
+- contract 和 implementation 阶段各最多一次开放式 full review；后续默认 targeted/bounded。只有新的系统性 P0/P1、大范围变更或用户明确要求时才可再次 full audit。Task 最终 Go 后，除非后续修改触及该领域，不得在其他 Task review 中重审。
+- bounded closure 在列明 findings 全部关闭、无直接 P0/P1 回归、要求的测试/门禁通过且 public API/schema/dependency/version 无未授权变化时必须结束并给出 `Verdict: Go`。无关 P0 可阻塞；与修改直接相关且有证据的 P1 可阻塞；其他观察只能记为 P2/P3，不得延迟收口。
+- reviewer 若认为 targeted/bounded review 必须扩为 full audit，不得直接扩围；必须先报告具体原因、命中的 full-audit 条件、涉及模块、额外成本以及当前工作是否应暂停。除用户已授权或发现紧急 P0 外，应等待确认。
 
 ## Mandatory uv environment
 

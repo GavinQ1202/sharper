@@ -100,7 +100,7 @@ schema -> pandas/numpy only
 
 ### 2.1 规格与实施计划的职责
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和最终 v0.1 能力。`IMPLEMENTATION_PLAN.md` 是 v0.1 的执行依据，定义每个 Task 的创建/修改文件、依赖、验收标准和实现顺序。两者出现阶段划分或交付顺序冲突时，应先修订 `SPEC.md` 以匹配 `IMPLEMENTATION_PLAN.md`，不得在实现中自行合并、跳过或扩大 Task。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Task 15 implementation 已完成且 bounded closure review 为 `Go`；Tasks 16--20 尚未实现。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
 
 ## 3. 推荐目录结构
 
@@ -784,27 +784,149 @@ readiness 已完成，但尚未发布到 PyPI；详细范围以
 
 每个 Task 都必须同时实现对应测试和最小文档。不得把 Task 02 改成 summary/quality，也不得将 Task 03/04 的公共结果类型提前到 Task 01。
 
-## 16. 后续路线图
+## 16. v0.2 已批准路线
 
-### v0.2：更深的分析与安全特征工程
+v0.2 roadmap 已通过统一 review；Task 15 implementation 已完成且 bounded closure review 为 `Go`，
+Tasks 16--20 尚未实现，v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。其权威路线合同为
+`docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何
+Task 15--20 public symbol、签名或 dataclass 字段。
 
-- 类别-类别 Cramér's V、数值-类别效应量、校正后的多重检验。
-- 监督分箱、target encoding、WOE，但必须 cross-fitting/out-of-fold。
-- 数据驱动分箱、group aggregate transformer 及 sklearn-compatible feature transformer 的正式 public API。
-- group-aware/time-aware validation；在此之前 v0.1 只披露或拒绝相应风险。
-- 有限的树模型基线与交叉验证；仍不做 AutoML。
-- 报告主题、章节选择和轻量配置文件。
-- 更完整的缺失模式、共线性与数据漂移比较（两个显式数据集）。
+### 16.1 产品目标与三条独立路径
 
-### v0.3：扩展规模与工作流
+v0.2 按以下顺序交付：
 
-- 多表但非数据库的数据关联分析，需先定义键与基数契约。
-- 可选 Plotly 交互式静态 HTML extra。
-- 分块 CSV profiling、采样策略与更明确的性能预算。
-- 模型持久化、模型卡和可复现运行 manifest。
+1. Binary Risk Validation and Business Metrics；
+2. Data Quality and Leakage Audit；
+3. Pre-loan Eligibility Rules and Decision Strategy Simulation；
+4. Post-loan Early Warning and Lifecycle Monitoring；
+5. Explainability, Champion/Challenger and Governance；
+6. v0.2 Integration and Release Readiness。
+
+这些能力形成三条可独立启用、最终可组合报告的路径：风险分数验证、贷前准入、
+贷后预警。贷前只执行 caller-defined 准入规则、回测和离线策略模拟，输出 simulated
+action、rule path 和假设下的业务结果；贷后只在 `entity × observation time` 上执行
+point-in-time 预警、alert lifecycle 和生命周期分析。两者不共享结果对象，也不执行
+真实审批、账户操作、客户联系或催收动作。
+
+v0.2 仍是通用表格分析能力，信用风险只是主要验证场景。代码、API、CLI 和测试不得
+硬编码信用字段、正类标签、分数方向、动作名称、DPD/MOB 状态或 Kaggle schema。
+反欺诈完全排除，且不属于本路线的延期项。
+
+### 16.2 时间成熟度、分数和阈值语义
+
+监督时间验证必须显式区分 `observation_time`、可空 `event_time`、
+`outcome_end_time`、`label_available_time`、prediction horizon 和 reporting delay。
+fold cutoff 为 `C` 时，训练行必须同时满足：
+
+```text
+observation_time < C
+label_available_time <= C
+```
+
+未成熟标签必须从 fit、fold metrics、calibration 和 loss denominator 中排除，并记录
+mature、immature、purged 和 unevaluable 数量。仅有 observation time 顺序不能证明
+标签无泄漏；event 已发生也不能替代 label availability。
+
+风险输入必须显式声明为以下一种语义：
+
+- `ranking_score`：任意有限、方向明确的实数，只用于排序指标、gains/lift、score
+  bands 和 caller 预声明 threshold 候选分析；
+- `event_probability`：必须是显式 positive event 的概率且位于 `[0, 1]`，才可用于
+  calibration、expected loss、expected revenue 或 expected payoff。
+
+`decision_function`、raw margin 或一般 score 不得被自动解释为 probability。只有
+ranking score 时，概率型业务结果必须 unavailable/undefined，而不是产生伪数值。
+Task 15 只在 train/validation/OOF 上分析 caller 预声明的有界 threshold 候选；final
+test 不用于选择，分析点不自动成为业务 cutoff。Task 17 只消费 caller 另行冻结的
+cutoff/bands，不自动采用、部署或优化策略。
+
+### 16.3 Ownership 与依赖 DAG
+
+```text
+Task 15 ─┐
+         ├─> Task 17 ─┐
+Task 16 ─┤             ├─> Task 19 ─> Task 20
+         └─> Task 18 ─┘
+```
+
+- Task 15 拥有 risk validation、OOF、ranking/probability metrics、calibration、
+  analytical threshold evidence 和基础 business metrics；
+- Task 16 拥有 quality/leakage audit、input/missingness profiling、missingness drift，
+  以及 Tasks 17/18 唯一共享的 private closed condition kernel；
+- Task 17 使用独立聚焦的 pre-loan policy 模块，拥有 eligibility rule evaluation、
+  simulated action、constraints、rule trace、backtest 和 policy comparison；
+- Task 18 使用独立聚焦的 post-loan monitoring 模块，拥有 point-in-time signals、
+  warning rules、alert history/episodes、backtest 和 lifecycle analysis；
+- Task 19 使用独立聚焦的 explanation/comparison/governance owner，只消费 Tasks
+  15--18 frozen results，并只新增自身的 model explanation、model comparison、
+  prediction drift 和 performance stability；
+- Task 20 只编排 opt-in workflow、静态 report、CLI、文档、examples 和发行准备。
+
+Tasks 17 和 18 并列且不相互依赖；Task 18 仅在使用模型分数时可选消费 Task 15。
+Task 19 不重算 Tasks 15--18 的指标、missingness drift、规则、动作、alerts、backtest
+或 lifecycle tables；Task 20 不承载领域算法。现有 `analysis.py` 保持 v0.1 职责，
+不得扩张为 risk、policy、warning 或 lifecycle catch-all。
+
+### 16.4 规则、动作与 CLI 边界
+
+Task 16 的 shared condition kernel 必须是 private、dependency-light、封闭 operator
+inventory、三值 `true/false/unknown`、确定性且有 missing/effective/expiration 和资源
+预算语义。它不是 public DSL，不接受 `eval`、任意 Python、callable、函数、脚本、
+插件或动态 operator；Tasks 17/18 只能消费，不能复制实现。
+
+`action_name` 与 `action_role` 必须分离。动作名称由 caller 定义；只有存在显式 role
+mapping 时才计算 selection/rejection/review/request-information 等业务指标。没有
+mapping 时只输出通用 action distribution，不从名称猜测批准、拒绝或人工审核含义。
+constraints 只评价 caller-frozen action scenario，不生成、改写或优化动作。
+
+Task 20 的 CLI 只规划版本化、封闭、纯数据 JSON policy/warning spec。未知 schema
+version、字段或 operator 必须失败；不接受 YAML/TOML、Python 表达式、函数、脚本、
+模板、include、`$ref`、环境变量或路径展开，也不得演变为通用规则 DSL。
+
+### 16.5 Public API、依赖与 v0.1 兼容
+
+v0.2 使用新的 opt-in 入口和优先 frozen、具名、可序列化的结果，不向已有 v0.1
+dataclass 追加语义关键字段，也不建立 manager、registry、plugin framework 或深层
+继承。每个新增 public symbol 必须先由对应 Task contract 冻结，再同步文档和
+contract tests 后加入 `sharper.__all__`。
+
+v0.1 public signatures、dataclass 字段顺序、默认行为、errors、warnings、reports、
+CLI、Figure ownership 和既有 exports 必须保持兼容。测试必须分为永久的
+`v0.1 compatibility invariants` 和随版本演进的 `current release surface`；后者负责
+当前版本、完整有序 `__all__`、v0.2 opt-in exports 和 distribution metadata。不得通过
+删除、搬移或弱化 v0.1 行为测试完成迁移。
+
+v0.2 core 不新增强制第三方依赖，也不以 LightGBM、XGBoost、CatBoost、SHAP 或其他
+optional extra 作为完成门槛。每个 API 继续要求输入不可变性、确定性、有界预算、
+有效样本量和限制披露。
+
+### 16.6 延期与明确排除
+
+以下旧 v0.2 草案能力已延期为后续独立研究，不属于 Tasks 15--20：新增 tree model
+families、supervised binning、WOE、target encoding、learned group aggregation、
+SHAP-specific public API、非目标类别—类别 Cramér's V、混合变量效应量、校正后的
+多重检验、通用报告主题/章节配置和通用轻量配置文件。Task 08 已冻结的 target
+analysis Cramér's V 不受影响。
+
+动态风险定价、自动额度优化、reject inference、因果/action-effect、uplift、controlled
+exploration、催收行动/渠道优化、多期动态规划、实时规则或决策引擎、自动贷款审批和
+监管合规认证只保留为长期研究方向，不构成已批准版本承诺。
+
+AutoML、深度学习、大规模 stacking、server/dashboard、反欺诈、任意代码执行规则
+DSL、多表关系引擎、分布式后端、生产部署和实际版本发布明确不属于 v0.2。
+
+### 16.7 后续规模与工作流研究
+
+原 v0.3 研究方向继续保留，但不构成版本承诺：
+
+- 多表但非数据库的数据关联分析，需先定义键与基数契约；
+- 可选 Plotly 交互式静态 HTML extra；
+- 分块 CSV profiling、采样策略与更明确的性能预算；
+- 模型持久化、模型卡和可复现运行 manifest；
 - 可选 statsmodels 或专用统计 extra（有明确用户需求后再决定）。
 
-AutoML、深度学习、Web dashboard、分布式系统、feature store、MLflow 和云部署在 v0.3 仍非承诺路线。
+AutoML、深度学习、Web dashboard、分布式系统、feature store、MLflow 和云部署在
+后续路线中仍不是承诺能力。
 
 ## 17. 风险、开放决策与验收标准
 

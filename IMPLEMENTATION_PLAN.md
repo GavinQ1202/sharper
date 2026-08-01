@@ -1,8 +1,11 @@
-# Sharper v0.1 Implementation Plan
+# Sharper Implementation Plan
 
 ## 1. 计划边界
 
-本计划只实现 `SPEC.md` 已批准的 v0.1。它保持以下完整轻量闭环：
+Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通过 review，
+Task 15 implementation 已完成且 bounded closure review 为 `Go`。Tasks 16--20 尚未实现，
+其 contracts 也尚未开始；v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
+v0.1 保持以下完整轻量闭环：
 
 ```text
 CSV/Excel
@@ -15,9 +18,14 @@ CSV/Excel
   -> Python workflow 与 CLI
 ```
 
-不实现 v0.2/v0.3 能力，包括数据驱动分箱 transform、group aggregate transformer、target encoding、WOE、监督分箱、交叉验证、group/time-aware split、树模型、模型比较、交互式图表和数据漂移。
+Tasks 01--14 不实现 v0.2/v0.3 能力。v0.2 只按
+`docs/decisions/v02-roadmap-contract.md` 和本计划的 Tasks 15--20 推进；新增 tree
+model family、数据驱动分箱 transform、group aggregate transformer、target
+encoding、WOE 和监督分箱已经延期，不得重新塞入 v0.2 Task。
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和最终 v0.1 能力；本计划是任务拆分和实现顺序的执行依据。若两者出现阶段划分或交付顺序冲突，应先修订 `SPEC.md` 与本计划对齐，再开始实现。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本能力；本计划是任务拆分和
+实现顺序的执行依据。若治理文件出现阶段划分、ownership 或交付顺序冲突，应先同步
+并 review 文档，再开始实现。
 
 v0.1 的分发契约冻结为：distribution name `sharper`、import name `sharper`、MIT license、初始版本 `0.1.0`。
 
@@ -53,6 +61,9 @@ v0.1 的分发契约冻结为：distribution name `sharper`、import name `sharp
    ```
 
 8. 若任务依赖的前置任务尚未合并，不得通过临时重复实现绕开依赖。
+9. Tasks 15--20 必须分别遵循 contract -> contract review -> implementation -> diff
+   review -> final Go；roadmap 和本计划不代替单 Task 的精确决策记录，也不允许跨
+   Task 提前实现后续能力。
 
 下面的“文件”是该任务允许创建或修改的主要范围。`README.md`、`docs/api.md` 或 docstring 只在 public behavior 改变时做局部同步。
 
@@ -1267,6 +1278,221 @@ Tasks 01–13。
 - CHANGELOG 准确列出 v0.1 能力与已知限制。
 - 不包含 v0.2/v0.3 API、lock file、构建产物、生成报告、发布/upload 行为或额外 workflow 文件。
 
+---
+
+### Task 15 — Binary Risk Validation and Business Metrics
+
+**状态：Implementation complete — review Go。**
+
+**合同：** `docs/decisions/task15-binary-risk-validation-contract.md`（Approved — Go）。
+
+v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完成且 bounded
+closure review 为 `Go`。Tasks 16--20 contracts 仍未开始；不得跨 Task 提前实现。
+
+**目标**
+
+在保持 v0.1 分类 API 与随机 holdout 默认行为不变的前提下，建立风险型二分类的
+validation、OOF、ranking/probability metrics 和基础业务指标语义。
+
+**依赖**
+
+v0.1 Tasks 01--14 稳定基线。Task 15 与 Task 16 是可独立 contract/review 的基础
+能力。
+
+**范围**
+
+- 显式 positive label、风险方向和 score provenance；
+- 严格区分任意有限 `ranking_score` 与 `[0, 1]` 内、对应显式正类的
+  `event_probability`；
+- stratified/group/time validation、frozen fold membership 和 OOF predictions；
+- time fold 同时执行 `observation_time < fold_cutoff` 与
+  `label_available_time <= fold_cutoff`，记录 horizon、reporting delay、成熟、排除和
+  purged 行；
+- ROC-AUC、准确命名的 PR 指标、normalized Gini、KS、gains、lift 和 capture；
+- 仅对 event probability 计算 calibration、Brier/log loss 和 expected-loss primitives；
+- 仅在 train/validation/OOF 上比较 caller 预声明的有界 threshold/band 候选并报告
+  analytical operating evidence；
+- 基础 exposure、成熟 observed loss 与 event-probability expected loss 汇总。
+
+**边界**
+
+不执行贷前规则、贷后预警，不分配业务动作，不消费业务 constraint，不计算
+action-dependent profit/payoff，不训练新模型族，不实现 WOE/target encoding 或策略
+optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和测试由 Task 15
+独立合同冻结。
+
+---
+
+### Task 16 — Data Quality and Leakage Audit
+
+**状态：规划已批准，合同未开始。**
+
+**目标**
+
+提供不改变 v0.1 `check_data_quality` 的 opt-in 质量与 leakage audit，并成为 Tasks
+17/18 shared condition truth 的唯一 owner。
+
+**依赖**
+
+v0.1 Tasks 03、04、14 稳定合同；与 Task 15 可独立推进。提供 target/score/folds 时
+只消费 Task 15 已冻结语义，不重算其 metrics 或 folds。
+
+**范围**
+
+- 特殊值、range、allowed-values、cross-column、时间和结构质量检查；
+- missingness profiling/drift：reference/current rates、绝对/相对变化、全缺失/恢复
+  列以及 schema/missing-pattern differences；
+- suspected ID、near-copy、target proxy 和 post-outcome evidence；
+- entity/group/time/point-in-time leakage、availability、outcome support 和 duplicate
+  entity-time audit；
+- private closed condition kernel：封闭 operators、三值逻辑、Boolean composition、
+  missing/effective/expiration semantics、预算、确定性和输入不可变性。
+
+**边界**
+
+只报告 evidence，不自动删列、填值、截尾、重采样、修复或替用户作业务决策。
+condition kernel 不导出为 public DSL，不接受 `eval`、任意 Python、callable、函数、
+脚本、插件或动态 operator。精确 API 和 private module placement 由 Task 16 独立合同
+冻结。
+
+---
+
+### Task 17 — Pre-loan Eligibility Rules and Decision Strategy Simulation
+
+**状态：规划已批准，合同未开始。**
+
+**目标**
+
+在独立聚焦的 pre-loan policy 模块中执行 caller-defined 准入规则和冻结策略的离线
+回放、约束评估与比较，不执行真实审批。
+
+**依赖**
+
+硬依赖 Task 16；使用 score、outcome 或 business metrics 时消费 Task 15 frozen
+results。不得依赖 Task 18。
+
+**范围**
+
+- hard/soft/refer、数据完整性、资格、产品、信用政策、偿付能力和敞口等通用规则；
+- 规则组合、priority、stop-on-hit、冲突、缺失、effective/expiration 和 version；
+- caller-frozen score bands/cutoffs、open/closed bounds、ties 和 fallback；
+- approve/decline/refer/request-information 等仅作为 caller symbolic action-name 示例的
+  deterministic offline action simulation；
+- 显式 `action_name`/`action_role` mapping；无 mapping 时只输出 action distribution；
+- manual-review capacity、风险、敞口、budget/rate constraints 的可行性与 gap；
+- 仅以 event probability 计算 expected loss/basic payoff，以成熟 observed outcomes
+  计算 observed replay；
+- rule hits、reasons、base/final action、override、provenance 和相同支持集上的
+  champion/challenger 离线比较。
+
+**边界**
+
+只执行 caller 冻结的规则、bands 和 policies；constraints 不生成或改写动作。不建立
+任意代码执行规则引擎、通用 DSL、solver 或 optimizer，不自动选择 winner/cutoff，
+不声称真实策略收益，不执行审批。只消费 Task 16 kernel，不复制 condition evaluator。
+
+---
+
+### Task 18 — Post-loan Early Warning and Lifecycle Monitoring
+
+**状态：规划已批准，合同未开始。**
+
+**目标**
+
+在独立聚焦的 post-loan monitoring 模块中，对 `customer/account × observation date`
+执行 point-in-time 预警、alert backtest 和生命周期分析，不执行账户或催收动作。
+
+**依赖**
+
+硬依赖 Task 16；使用模型分数时可选消费 Task 15。不得依赖 Task 17 或其 action
+result。
+
+**范围**
+
+- explicit entity、observation/available/event time、prior-only windows、horizon、
+  maturity/censoring 和边界语义；
+- level/change/trend/persistence/combination/state-transition/peer/history rules；
+- first/repeated alerts、persistence、episodes、cooldown、resolution 和 reopen；
+- alert/rule-hit rate、event capture/recall、precision、false-alert share、false-positive
+  rate、lead time、burden 和 unresolved/duplicate metrics；
+- vintage、cohort age、MOB、roll-rate、roll-forward/back、cure、cohort 和 maturity；
+- no-alert、single-threshold、current/challenger rules、model score 和 model+rules 的
+  同支持集离线比较。
+
+**边界**
+
+future events 只用于 matured-horizon backtest，不进入当时 signal/rule/alert state。
+不自动推荐或执行催收动作，不优化渠道，不建立实时监控服务，不实现反欺诈，也不
+把历史关联描述为 alert 的因果效果。只消费 Task 16 kernel，不复制 condition
+evaluator；alert/history result 与 Task 17 action result 分离。
+
+---
+
+### Task 19 — Explainability, Champion/Challenger and Governance
+
+**状态：规划已批准，合同未开始。**
+
+**目标**
+
+在独立聚焦的 explanation/comparison/governance owner 中汇总模型、规则、策略和预警
+的解释、比较与审计 evidence。
+
+**依赖**
+
+Tasks 15、16、17、18 全部完成并冻结结果。
+
+**范围**
+
+- coefficient、native/permutation importance 和 source-feature provenance；
+- 同一 frozen folds/rows 上的 model champion/challenger comparison；
+- 消费 Task 17 policy comparison 和 Task 18 warning comparison，形成 comparison
+  inventory；
+- model/policy/alert reason provenance、reason codes、mapping coverage、rule path、
+  versioning、override audit 和 fallback；
+- prediction drift、model performance-by-time/group、稳定性与 bounded reproducibility
+  audit metadata；不建立 v0.3 的完整 run manifest；
+- governance purpose、owner、assumptions、limitations、monitoring evidence 和 issue
+  status。
+
+**边界**
+
+只消费 Tasks 15--18 frozen results，不重新计算其 metrics、missingness drift、input
+profiles、conditions、rules、actions、alerts、backtests、policy comparisons 或 lifecycle
+tables。不生成 adverse-action notice、合规认证、因果结论或自动业务授权。
+
+---
+
+### Task 20 — v0.2 Integration and Release Readiness
+
+**状态：规划已批准，合同未开始。**
+
+**目标**
+
+把 Tasks 15--19 frozen public results 接入独立 opt-in v0.2 workflow、静态报告和 CLI，
+完成文档、示例、兼容性、distribution 和 CI readiness，但不实际发布。
+
+**依赖**
+
+Tasks 15--19 全部完成并通过各自合同。
+
+**范围**
+
+- 新的 opt-in workflow/result，不扩充 v0.1 `AnalysisRun`；
+- score validation、pre-loan eligibility、post-loan warning 三条独立路径及可组合报告；
+- result-only 静态 Markdown/HTML 与既有 Figure/asset ownership；
+- 只解析 versioned、closed、pure-data JSON policy/warning spec 的 CLI adapter；未知
+  schema version、field/operator、非 JSON、duplicate key 或超预算嵌套明确失败；
+- examples、API/guide/leakage 文档和发行准备说明；
+- 永久 `v0.1 compatibility invariants` 与 `current release surface` tests；
+- pytest/Ruff、wheel/sdist、独立 clean-install、CLI/examples smoke 和 CI readiness。
+
+**边界**
+
+workflow 只编排 public APIs，reporting 不重算，CLI 不含领域算法。CLI 不接受
+YAML/TOML、Python、函数、脚本、模板、环境变量或路径展开，不建立通用规则 DSL。
+Task 20 不 tag、push、upload、创建 release 或实际发布；版本和 exports 的精确迁移只
+能由 Task 20 独立合同授权。
+
 ## 4. 依赖顺序总览
 
 ```text
@@ -1288,6 +1514,21 @@ Tasks 01–13。
 ```
 
 Task 06 可在 Task 05 之后与 Tasks 07–09 独立排期，但必须在 Task 13 前完成。其余任务按编号顺序执行最容易保持 public contract 稳定。
+
+v0.2 在稳定 v0.1 基线上使用以下 DAG：
+
+```text
+Task 15 ─┐
+         ├─> Task 17 ─┐
+Task 16 ─┤             ├─> Task 19 ─> Task 20
+         └─> Task 18 ─┘
+```
+
+Task 15、16 是基础能力。Task 17 硬依赖 Task 16，并在使用 score/outcome/business
+metrics 时消费 Task 15；Task 18 硬依赖 Task 16，使用模型分数时可选消费 Task 15。
+Tasks 17/18 并列且不相互依赖。Task 19 等待 Tasks 15--18 frozen results，Task 20
+等待 Task 19。每个 Task 必须先建立并通过独立 contract review，禁止通过跨 Task
+复制逻辑或提前实现绕开依赖。
 
 ## 5. v0.1 最终发布门槛
 

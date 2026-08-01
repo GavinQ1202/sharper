@@ -77,6 +77,20 @@ class RegressionTrainingResult:
     limitations: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class _ClassifierFoldSnapshot:
+    """Private train-fold snapshot shared by v0.1 and Task 15."""
+
+    feature_columns: tuple[str, ...]
+    schema: SchemaReport
+    pipeline: Pipeline
+    estimator: ClassifierMixin
+    X_validation: pd.DataFrame
+    score_kind: Literal["predict_proba", "decision_function"] | None
+    ranking_scores: tuple[float, ...] | None
+    event_probabilities: tuple[float, ...] | None
+
+
 def _label_kind(value: object) -> str | None:
     if isinstance(value, (bool, np.bool_)):
         return "bool"
@@ -201,20 +215,204 @@ def _feature_kind(series: pd.Series) -> str | None:
     return None
 
 
-def _validate_fitted_classes(estimator: object, classes: tuple[Label, ...]) -> None:
+def _validate_fitted_classes(
+    estimator: object,
+    classes: tuple[Label, ...],
+    *,
+    message: str = "classifier estimator has invalid output",
+) -> None:
     raw_classes = getattr(estimator, "classes_", None)
     if raw_classes is None:
-        raise ValueError("classifier estimator has invalid output")
+        raise ValueError(message)
     try:
         normalised = tuple(_normalise_label(value) for value in list(raw_classes))
     except (TypeError, ValueError) as error:
-        raise ValueError("classifier estimator has invalid output") from error
+        raise ValueError(message) from error
     if (
         not normalised
         or not _labels_are_unique(normalised)
         or not _same_label_set(normalised, classes)
     ):
-        raise ValueError("classifier estimator has invalid output")
+        raise ValueError(message)
+
+
+def _fit_classifier_fold(
+    df: pd.DataFrame,
+    *,
+    labels: tuple[Label, ...],
+    classes: tuple[Label, ...],
+    positive_label: Label | None,
+    model_columns: tuple[str, ...],
+    candidates: tuple[str, ...],
+    requested_features: tuple[str, ...] | None,
+    train_positions: tuple[int, ...],
+    validation_positions: tuple[int, ...],
+    estimator_source: ClassifierMixin,
+    clone_source: bool,
+    require_score: bool,
+    clone_error_message: str,
+    fit_error_message: str,
+    prediction_error_message: str,
+    output_error_message: str,
+) -> _ClassifierFoldSnapshot:
+    """Fit one classification fold without reading validation state."""
+    X = df.loc[:, list(model_columns)]
+    X_train = X.iloc[list(train_positions)].copy(deep=True)
+    X_validation = X.iloc[list(validation_positions)].copy(deep=True)
+    schema = infer_schema(X_train)
+    schema_by_name = {column.name: column for column in schema.columns}
+    selected: list[str] = []
+    numeric: list[str] = []
+    categorical: list[str] = []
+    for column in model_columns:
+        if column not in candidates:
+            continue
+        kind = _feature_kind(X_train[column])
+        if kind is None:
+            if requested_features is not None:
+                raise ValueError(f"unsupported model feature dtype: {column!r}")
+            continue
+        report = schema_by_name[column]
+        if report.is_id_like:
+            if requested_features is not None:
+                raise ValueError(f"unsupported model feature dtype: {column!r}")
+            continue
+        if report.is_constant:
+            continue
+        selected.append(column)
+        (numeric if kind == "numeric" else categorical).append(column)
+    if not selected:
+        raise ValueError("no eligible model features")
+
+    if clone_source:
+        try:
+            base_estimator = clone(estimator_source)
+        except Exception as error:
+            raise ValueError(clone_error_message) from error
+    else:
+        base_estimator = estimator_source
+
+    transformers: list[tuple[str, Pipeline, list[str]]] = []
+    if numeric:
+        transformers.append(
+            (
+                "numeric",
+                Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                numeric,
+            )
+        )
+    if categorical:
+        transformers.append(
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("encoder", OneHotEncoder(handle_unknown="ignore")),
+                    ]
+                ),
+                categorical,
+            )
+        )
+    pipeline = Pipeline(
+        [
+            ("preprocessor", ColumnTransformer(transformers, remainder="drop")),
+            ("estimator", base_estimator),
+        ]
+    )
+    y_train = [labels[position] for position in train_positions]
+    try:
+        pipeline.fit(X_train.loc[:, selected], y_train)
+    except Exception as error:
+        raise ValueError(fit_error_message) from error
+    fitted_estimator = pipeline.named_steps["estimator"]
+    _validate_fitted_classes(fitted_estimator, classes, message=output_error_message)
+
+    score_kind: Literal["predict_proba", "decision_function"] | None = None
+    ranking_scores: tuple[float, ...] | None = None
+    event_probabilities: tuple[float, ...] | None = None
+    if require_score:
+        fitted_classes = tuple(
+            _normalise_label(value) for value in list(fitted_estimator.classes_)
+        )
+        probability = getattr(pipeline, "predict_proba", None)
+        if callable(probability):
+            try:
+                raw_values = probability(X_validation.loc[:, selected])
+            except Exception as error:
+                raise ValueError(prediction_error_message) from error
+            try:
+                values = np.asarray(raw_values, dtype="float64")
+            except (TypeError, ValueError) as error:
+                raise ValueError(output_error_message) from error
+            valid = (
+                values.ndim == 2
+                and values.shape == (len(validation_positions), 2)
+                and np.isfinite(values).all()
+                and not (values < 0.0).any()
+                and not (values > 1.0).any()
+                and np.allclose(values.sum(axis=1), 1.0, rtol=0.0, atol=1e-12)
+            )
+            if not valid or positive_label is None:
+                raise ValueError(output_error_message)
+            positive_key = _label_key(positive_label)
+            index = next(
+                (
+                    i
+                    for i, value in enumerate(fitted_classes)
+                    if _label_key(value) == positive_key
+                ),
+                None,
+            )
+            if index is None:
+                raise ValueError(output_error_message)
+            probabilities = np.asarray(values[:, index], dtype="float64")
+            score_kind = "predict_proba"
+            ranking_scores = tuple(float(value) for value in probabilities)
+            event_probabilities = ranking_scores
+        else:
+            decision = getattr(pipeline, "decision_function", None)
+            if not callable(decision) or positive_label is None:
+                raise ValueError(output_error_message)
+            try:
+                raw_values = decision(X_validation.loc[:, selected])
+            except Exception as error:
+                raise ValueError(prediction_error_message) from error
+            try:
+                values = np.asarray(raw_values, dtype="float64")
+            except (TypeError, ValueError) as error:
+                raise ValueError(output_error_message) from error
+            if (
+                values.ndim != 1
+                or len(values) != len(validation_positions)
+                or not np.isfinite(values).all()
+            ):
+                raise ValueError(output_error_message)
+            positive_key = _label_key(positive_label)
+            if positive_key == _label_key(fitted_classes[1]):
+                directed = values
+            elif positive_key == _label_key(fitted_classes[0]):
+                directed = -values
+            else:
+                raise ValueError(output_error_message)
+            score_kind = "decision_function"
+            ranking_scores = tuple(float(value) for value in directed)
+
+    return _ClassifierFoldSnapshot(
+        feature_columns=tuple(selected),
+        schema=schema,
+        pipeline=pipeline,
+        estimator=fitted_estimator,
+        X_validation=X_validation.loc[:, selected].copy(deep=True),
+        score_kind=score_kind,
+        ranking_scores=ranking_scores,
+        event_probabilities=event_probabilities,
+    )
 
 
 def _validate_regression_target(series: pd.Series) -> tuple[float, ...]:
@@ -389,74 +587,24 @@ def train_classifier(
             "test_size must permit a stratified split strictly between 0 and 1"
         ) from error
 
-    X = df.loc[:, model_columns]
-    X_train = X.iloc[train_positions].copy(deep=True)
-    X_test = X.iloc[test_positions].copy(deep=True)
-    schema = infer_schema(X_train)
-    schema_by_name = {column.name: column for column in schema.columns}
-    selected: list[str] = []
-    numeric: list[str] = []
-    categorical: list[str] = []
-    for column in model_columns:
-        if column not in candidates:
-            continue
-        kind = _feature_kind(X_train[column])
-        if kind is None:
-            if requested_features is not None:
-                raise ValueError(f"unsupported model feature dtype: {column!r}")
-            continue
-        report = schema_by_name[column]
-        if report.is_id_like:
-            if requested_features is not None:
-                raise ValueError(f"unsupported model feature dtype: {column!r}")
-            continue
-        if report.is_constant:
-            continue
-        selected.append(column)
-        (numeric if kind == "numeric" else categorical).append(column)
-    if not selected:
-        raise ValueError("no eligible model features")
-
-    transformers: list[tuple[str, Pipeline, list[str]]] = []
-    if numeric:
-        transformers.append(
-            (
-                "numeric",
-                Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy="median")),
-                        ("scaler", StandardScaler()),
-                    ]
-                ),
-                numeric,
-            )
-        )
-    if categorical:
-        transformers.append(
-            (
-                "categorical",
-                Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy="most_frequent")),
-                        ("encoder", OneHotEncoder(handle_unknown="ignore")),
-                    ]
-                ),
-                categorical,
-            )
-        )
-    pipeline = Pipeline(
-        [
-            ("preprocessor", ColumnTransformer(transformers, remainder="drop")),
-            ("estimator", base_estimator),
-        ]
+    snapshot = _fit_classifier_fold(
+        df,
+        labels=labels,
+        classes=tuple(dict.fromkeys(labels)),
+        positive_label=None,
+        model_columns=tuple(model_columns),
+        candidates=tuple(candidates),
+        requested_features=requested_features,
+        train_positions=tuple(int(position) for position in train_positions),
+        validation_positions=tuple(int(position) for position in test_positions),
+        estimator_source=base_estimator,
+        clone_source=False,
+        require_score=False,
+        clone_error_message="classifier estimator could not be cloned",
+        fit_error_message="classifier estimator fit failed",
+        prediction_error_message="classifier estimator prediction failed",
+        output_error_message="classifier estimator has invalid output",
     )
-    y_train = [labels[position] for position in train_positions]
-    try:
-        pipeline.fit(X_train.loc[:, selected], y_train)
-    except Exception as error:
-        raise ValueError("classifier estimator fit failed") from error
-    fitted_estimator = pipeline.named_steps["estimator"]
-    _validate_fitted_classes(fitted_estimator, tuple(dict.fromkeys(labels)))
 
     warnings: list[str] = []
     if df.index.has_duplicates:
@@ -475,16 +623,16 @@ def train_classifier(
     return TrainingResult(
         task="classification",
         target=target,
-        feature_columns=tuple(selected),
+        feature_columns=snapshot.feature_columns,
         excluded_columns=tuple(exclusions),
         time_column=None,
-        schema=schema,
-        pipeline=pipeline,
-        estimator=fitted_estimator,
+        schema=snapshot.schema,
+        pipeline=snapshot.pipeline,
+        estimator=snapshot.estimator,
         classes=tuple(dict.fromkeys(labels)),
         train_row_positions=tuple(int(position) for position in train_positions),
         test_row_positions=tuple(int(position) for position in test_positions),
-        X_test=X_test.loc[:, selected].copy(deep=True),
+        X_test=snapshot.X_validation,
         y_test=tuple(labels[position] for position in test_positions),
         test_size=float(test_size),
         random_state=None if random_state is None else int(random_state),

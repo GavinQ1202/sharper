@@ -1,6 +1,7 @@
 """Task 10 contracts for static analytical visualization."""
 
 import inspect
+import io
 from dataclasses import fields, replace
 
 import matplotlib
@@ -9,12 +10,16 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.model_selection import StratifiedKFold
 
 matplotlib.use("Agg")
 
 from matplotlib.figure import Figure
 
 from sharper import (
+    BinaryRiskValidationConfig,
+    BinaryRiskValidationResult,
+    ExternalRiskPredictions,
     PlotCollection,
     PlotResult,
     TargetAnalysis,
@@ -24,6 +29,7 @@ from sharper import (
     detect_outliers,
     evaluate_classifier,
     evaluate_regressor,
+    plot_binary_risk_validation,
     plot_classification_evaluation,
     plot_correlations,
     plot_distributions,
@@ -34,6 +40,7 @@ from sharper import (
     plot_target_relationships,
     train_classifier,
     train_regressor,
+    validate_binary_risk,
 )
 from sharper import evaluation as evaluation_module
 
@@ -41,6 +48,940 @@ from sharper import evaluation as evaluation_module
 def _close(collection: PlotCollection) -> None:
     for plot in collection.plots:
         plt.close(plot.figure)
+
+
+def _task15_frozen_dtypes(
+    frame: pd.DataFrame,
+    *,
+    integers: tuple[str, ...],
+    floats: tuple[str, ...],
+    booleans: tuple[str, ...] = (),
+) -> pd.DataFrame:
+    frozen = frame.copy(deep=True)
+    for column in integers:
+        frozen[column] = pd.array(frozen[column], dtype="Int64")
+    for column in floats:
+        frozen[column] = pd.array(frozen[column], dtype="Float64")
+    for column in booleans:
+        frozen[column] = pd.array(frozen[column], dtype="boolean")
+    return frozen
+
+
+def _binary_risk_plot_result() -> object:
+    target = np.asarray([0, 1] * 6)
+    positions = np.arange(len(target))
+    fold_ids = np.empty(len(target), dtype=int)
+    fit_rows = []
+    for fold_id, (train, validation) in enumerate(
+        StratifiedKFold(n_splits=3, shuffle=True, random_state=42).split(
+            positions, target
+        )
+    ):
+        fit_rows.append((fold_id, tuple(sorted(int(value) for value in train))))
+        fold_ids[validation] = fold_id
+    values = tuple(float(value) for value in np.linspace(0.05, 0.95, len(target)))
+    return validate_binary_risk(
+        pd.DataFrame({"target": target}),
+        "target",
+        config=BinaryRiskValidationConfig(
+            validation_mode="stratified_kfold",
+            n_splits=3,
+            thresholds=(0.25, 0.5),
+            threshold_kind="event_probability",
+            calibration_bins=3,
+            gain_fractions=(0.25, 0.5, 1.0),
+        ),
+        external_predictions=ExternalRiskPredictions(
+            row_positions=tuple(int(value) for value in positions),
+            fold_ids=tuple(int(value) for value in fold_ids),
+            fold_fit_row_positions=tuple(fit_rows),
+            ranking_scores=values,
+            ranking_direction="higher_risk",
+            event_probabilities=values,
+            probability_positive_label=1,
+            probability_provenance="external_declared",
+        ),
+    )
+
+
+def _manual_binary_risk_plot_result() -> BinaryRiskValidationResult:
+    gains = pd.DataFrame(
+        [
+            (
+                "overall",
+                pd.NA,
+                0.5,
+                2,
+                0.7,
+                2,
+                0.5,
+                2,
+                1,
+                0.5,
+                "available",
+                pd.NA,
+                0.5,
+                "available",
+                pd.NA,
+                1.0,
+                "available",
+                pd.NA,
+            ),
+            (
+                "overall",
+                pd.NA,
+                1.0,
+                4,
+                0.1,
+                4,
+                1.0,
+                2,
+                2,
+                0.5,
+                "available",
+                pd.NA,
+                1.0,
+                "available",
+                pd.NA,
+                1.0,
+                "available",
+                pd.NA,
+            ),
+        ],
+        columns=(
+            "scope",
+            "fold_id",
+            "requested_fraction",
+            "target_count",
+            "boundary_score",
+            "selected_n",
+            "actual_fraction",
+            "total_positive_n",
+            "selected_positive_n",
+            "event_rate",
+            "event_rate_status",
+            "event_rate_reason",
+            "capture",
+            "capture_status",
+            "capture_reason",
+            "lift",
+            "lift_status",
+            "lift_reason",
+        ),
+    )
+    calibration = pd.DataFrame(
+        [
+            (
+                "overall",
+                pd.NA,
+                0,
+                0.0,
+                0.5,
+                False,
+                2,
+                0.2,
+                0.0,
+                0.2,
+                0.1,
+                "available",
+                pd.NA,
+            ),
+            (
+                "overall",
+                pd.NA,
+                1,
+                0.5,
+                1.0,
+                True,
+                2,
+                0.8,
+                1.0,
+                0.2,
+                0.1,
+                "available",
+                pd.NA,
+            ),
+        ],
+        columns=(
+            "scope",
+            "fold_id",
+            "bin_id",
+            "lower_bound",
+            "upper_bound",
+            "upper_inclusive",
+            "n_rows",
+            "mean_predicted_probability",
+            "observed_event_rate",
+            "absolute_gap",
+            "weighted_gap",
+            "status",
+            "reason",
+        ),
+    )
+    threshold_rows = []
+    for threshold, values in (
+        (0.25, (0.75, 0.5, 2.0 / 3.0, 0.5, 0.7, 0.625, 0.75)),
+        (0.75, (0.25, 1.0, 1.0, 0.6, 0.4, 0.625, 0.25)),
+    ):
+        row = {
+            "scope": "overall",
+            "fold_id": pd.NA,
+            "threshold_kind": "event_probability",
+            "threshold": threshold,
+            "tp": 1,
+            "fp": 1,
+            "tn": 2,
+            "fn": 1,
+        }
+        for name, value in zip(
+            (
+                "sensitivity",
+                "specificity",
+                "precision",
+                "negative_predictive_value",
+                "f1",
+                "accuracy",
+                "predicted_positive_rate",
+            ),
+            values,
+            strict=True,
+        ):
+            row[name] = value
+            row[f"{name}_status"] = "available"
+            row[f"{name}_reason"] = pd.NA
+        threshold_rows.append(row)
+    threshold = pd.DataFrame(
+        threshold_rows,
+        columns=(
+            "scope",
+            "fold_id",
+            "threshold_kind",
+            "threshold",
+            "tp",
+            "fp",
+            "tn",
+            "fn",
+            "sensitivity",
+            "sensitivity_status",
+            "sensitivity_reason",
+            "specificity",
+            "specificity_status",
+            "specificity_reason",
+            "precision",
+            "precision_status",
+            "precision_reason",
+            "negative_predictive_value",
+            "negative_predictive_value_status",
+            "negative_predictive_value_reason",
+            "f1",
+            "f1_status",
+            "f1_reason",
+            "accuracy",
+            "accuracy_status",
+            "accuracy_reason",
+            "predicted_positive_rate",
+            "predicted_positive_rate_status",
+            "predicted_positive_rate_reason",
+        ),
+    )
+    gains = _task15_frozen_dtypes(
+        gains,
+        integers=(
+            "fold_id",
+            "target_count",
+            "selected_n",
+            "total_positive_n",
+            "selected_positive_n",
+        ),
+        floats=(
+            "requested_fraction",
+            "boundary_score",
+            "actual_fraction",
+            "event_rate",
+            "capture",
+            "lift",
+        ),
+    )
+    calibration = _task15_frozen_dtypes(
+        calibration,
+        integers=("fold_id", "bin_id", "n_rows"),
+        floats=(
+            "lower_bound",
+            "upper_bound",
+            "mean_predicted_probability",
+            "observed_event_rate",
+            "absolute_gap",
+            "weighted_gap",
+        ),
+        booleans=("upper_inclusive",),
+    )
+    threshold = _task15_frozen_dtypes(
+        threshold,
+        integers=("fold_id", "tp", "fp", "tn", "fn"),
+        floats=(
+            "threshold",
+            "sensitivity",
+            "specificity",
+            "precision",
+            "negative_predictive_value",
+            "f1",
+            "accuracy",
+            "predicted_positive_rate",
+        ),
+    )
+    empty = pd.DataFrame()
+    return BinaryRiskValidationResult(
+        target="target",
+        positive_label=1,
+        validation_mode="stratified_kfold",
+        config=BinaryRiskValidationConfig(
+            validation_mode="stratified_kfold", n_splits=2
+        ),
+        prediction_scope="oof",
+        score_source="external_ranking_and_probability",
+        score_direction="higher_positive_event_risk",
+        probability_provenance="external_declared",
+        input_n_rows=4,
+        eligible_n_rows=4,
+        predicted_n_rows=4,
+        evaluable_n_rows=4,
+        requested_threshold_count=2,
+        actual_threshold_count=2,
+        observed_loss_maturity_mode="not_provided",
+        observed_loss_analysis_as_of=None,
+        observed_loss_mature_n=0,
+        observed_loss_excluded_n=0,
+        folds=empty.copy(),
+        predictions=empty.copy(),
+        excluded_rows=empty.copy(),
+        metrics=empty.copy(),
+        gains=gains,
+        calibration=calibration,
+        threshold_analysis=threshold,
+        operating_point=empty.copy(),
+        business_metrics=empty.copy(),
+        warnings=(),
+        limitations=(),
+    )
+
+
+@pytest.mark.parametrize(
+    ("kind", "title", "x_label", "y_label", "labels"),
+    [
+        (
+            "gains",
+            "Cumulative gains",
+            "Selected fraction",
+            "Cumulative event capture",
+            ["Event capture", "Reference"],
+        ),
+        ("lift", "Lift", "Selected fraction", "Lift", ["Lift", "Reference"]),
+        (
+            "calibration",
+            "Calibration",
+            "Mean predicted probability",
+            "Observed event rate",
+            ["Observed event rate", "Reference"],
+        ),
+        (
+            "threshold",
+            "Threshold metrics",
+            "Threshold",
+            "Rate",
+            ["Predicted positive rate", "Recall", "Precision", "Specificity"],
+        ),
+    ],
+)
+def test_binary_risk_result_only_plot_structure_and_ownership(
+    kind: str,
+    title: str,
+    x_label: str,
+    y_label: str,
+    labels: list[str],
+) -> None:
+    result = _binary_risk_plot_result()
+    figure = plot_binary_risk_validation(result, kind=kind)  # type: ignore[arg-type]
+    try:
+        assert isinstance(figure, Figure)
+        assert len(figure.axes) == 1
+        axes = figure.axes[0]
+        assert (axes.get_title(), axes.get_xlabel(), axes.get_ylabel()) == (
+            title,
+            x_label,
+            y_label,
+        )
+        assert [line.get_label() for line in axes.lines] == labels
+        assert [text.get_text() for text in axes.get_legend().get_texts()] == labels
+        primary_count = 4 if kind == "threshold" else 1
+        assert all(line.get_linestyle() == "-" for line in axes.lines[:primary_count])
+        assert all(line.get_marker() == "o" for line in axes.lines[:primary_count])
+        assert axes.get_xlim() == pytest.approx((0.0, 1.0))
+        if kind in ("gains", "calibration", "threshold"):
+            assert axes.get_ylim() == pytest.approx((0.0, 1.0))
+    finally:
+        plt.close(figure)
+
+
+def test_binary_risk_plots_use_overall_rows_in_source_order() -> None:
+    result = _binary_risk_plot_result()
+    gains_before = result.gains.copy(deep=True)
+    figure = plot_binary_risk_validation(result, kind="gains")
+    try:
+        overall = result.gains.loc[result.gains["scope"] == "overall"]
+        assert np.array_equal(
+            figure.axes[0].lines[0].get_xdata(),
+            overall["actual_fraction"].to_numpy(dtype=float),
+        )
+        assert np.array_equal(
+            figure.axes[0].lines[0].get_ydata(),
+            overall["capture"].to_numpy(dtype=float),
+        )
+        pd.testing.assert_frame_equal(result.gains, gains_before)
+    finally:
+        plt.close(figure)
+
+
+def test_binary_risk_plot_errors_are_exact_and_create_no_placeholder() -> None:
+    result = _binary_risk_plot_result()
+    sentinel = plt.figure()
+    existing = set(plt.get_fignums())
+    try:
+        with pytest.raises(
+            ValueError, match="^result must be a BinaryRiskValidationResult$"
+        ):
+            plot_binary_risk_validation(pd.DataFrame(), kind="gains")  # type: ignore[arg-type]
+        with pytest.raises(
+            ValueError, match="^binary risk validation plot kind is invalid$"
+        ):
+            plot_binary_risk_validation(result, kind="roc")  # type: ignore[arg-type]
+
+        malformed = result.gains.loc[:, list(result.gains.columns)[::-1]]
+        with pytest.raises(
+            ValueError,
+            match="^binary risk validation plot table has invalid schema: gains$",
+        ):
+            plot_binary_risk_validation(replace(result, gains=malformed), kind="gains")
+
+        unavailable = result.gains.copy(deep=True)
+        overall = unavailable["scope"] == "overall"
+        unavailable.loc[overall, "capture"] = pd.NA
+        unavailable.loc[overall, "capture_status"] = "undefined"
+        unavailable.loc[overall, "capture_reason"] = "zero_denominator"
+        with pytest.raises(
+            ValueError,
+            match=(
+                "^binary risk validation plot evidence is unavailable or undefined: "
+                "gains$"
+            ),
+        ):
+            plot_binary_risk_validation(
+                replace(result, gains=unavailable), kind="gains"
+            )
+        assert set(plt.get_fignums()) == existing
+        assert plt.gcf() is sentinel
+    finally:
+        plt.close(sentinel)
+
+
+def test_binary_risk_calibration_omits_only_structural_empty_bins() -> None:
+    result = _binary_risk_plot_result()
+    overall = result.calibration["scope"] == "overall"
+    available_count = int(
+        ((result.calibration["status"] == "available") & overall).sum()
+    )
+    figure = plot_binary_risk_validation(result, kind="calibration")
+    try:
+        assert len(figure.axes[0].lines[0].get_xdata()) == available_count
+    finally:
+        plt.close(figure)
+
+    broken = result.calibration.copy(deep=True)
+    first = broken.index[overall][0]
+    broken.loc[first, "status"] = "undefined"
+    broken.loc[first, "reason"] = "single_class"
+    with pytest.raises(
+        ValueError,
+        match=("^binary risk validation plot table has invalid schema: calibration$"),
+    ):
+        plot_binary_risk_validation(
+            replace(result, calibration=broken), kind="calibration"
+        )
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected_x", "expected_y"),
+    [
+        ("gains", [0.5, 1.0], [0.5, 1.0]),
+        ("lift", [0.5, 1.0], [1.0, 1.0]),
+        ("calibration", [0.2, 0.8], [0.0, 1.0]),
+        ("threshold", [0.25, 0.75], [0.75, 0.25]),
+    ],
+)
+def test_binary_risk_plots_use_hand_frozen_tables(
+    kind: str, expected_x: list[float], expected_y: list[float]
+) -> None:
+    result = _manual_binary_risk_plot_result()
+    figure = plot_binary_risk_validation(result, kind=kind)  # type: ignore[arg-type]
+    try:
+        np.testing.assert_allclose(figure.axes[0].lines[0].get_xdata(), expected_x)
+        np.testing.assert_allclose(figure.axes[0].lines[0].get_ydata(), expected_y)
+        if kind == "threshold":
+            assert [line.get_label() for line in figure.axes[0].lines] == [
+                "Predicted positive rate",
+                "Recall",
+                "Precision",
+                "Specificity",
+            ]
+    finally:
+        plt.close(figure)
+
+
+@pytest.mark.parametrize(
+    (
+        "kind",
+        "title",
+        "x_label",
+        "y_label",
+        "expected_lines",
+        "expected_ylim",
+    ),
+    [
+        (
+            "gains",
+            "Cumulative gains",
+            "Selected fraction",
+            "Cumulative event capture",
+            (
+                ("Event capture", [0.5, 1.0], [0.5, 1.0], "#4C78A8", "-", "o"),
+                ("Reference", [0.0, 1.0], [0.0, 1.0], "#9E9E9E", "--", "None"),
+            ),
+            (0.0, 1.0),
+        ),
+        (
+            "lift",
+            "Lift",
+            "Selected fraction",
+            "Lift",
+            (
+                ("Lift", [0.5, 1.0], [1.0, 1.0], "#4C78A8", "-", "o"),
+                ("Reference", [0.0, 1.0], [1.0, 1.0], "#9E9E9E", "--", "None"),
+            ),
+            (0.945, 1.055),
+        ),
+        (
+            "calibration",
+            "Calibration",
+            "Mean predicted probability",
+            "Observed event rate",
+            (
+                (
+                    "Observed event rate",
+                    [0.2, 0.8],
+                    [0.0, 1.0],
+                    "#4C78A8",
+                    "-",
+                    "o",
+                ),
+                ("Reference", [0.0, 1.0], [0.0, 1.0], "#9E9E9E", "--", "None"),
+            ),
+            (0.0, 1.0),
+        ),
+        (
+            "threshold",
+            "Threshold metrics",
+            "Threshold",
+            "Rate",
+            (
+                (
+                    "Predicted positive rate",
+                    [0.25, 0.75],
+                    [0.75, 0.25],
+                    "#4C78A8",
+                    "-",
+                    "o",
+                ),
+                (
+                    "Recall",
+                    [0.25, 0.75],
+                    [0.75, 0.25],
+                    "#F58518",
+                    "-",
+                    "o",
+                ),
+                (
+                    "Precision",
+                    [0.25, 0.75],
+                    [2.0 / 3.0, 1.0],
+                    "#54A24B",
+                    "-",
+                    "o",
+                ),
+                (
+                    "Specificity",
+                    [0.25, 0.75],
+                    [0.5, 1.0],
+                    "#E45756",
+                    "-",
+                    "o",
+                ),
+            ),
+            (0.0, 1.0),
+        ),
+    ],
+)
+def test_binary_risk_hand_tables_freeze_every_artist_and_style(
+    kind: str,
+    title: str,
+    x_label: str,
+    y_label: str,
+    expected_lines: tuple[tuple[str, list[float], list[float], str, str, str], ...],
+    expected_ylim: tuple[float, float],
+) -> None:
+    result = _manual_binary_risk_plot_result()
+    figure = plot_binary_risk_validation(result, kind=kind)  # type: ignore[arg-type]
+    try:
+        assert len(figure.axes) == 1
+        axes = figure.axes[0]
+        assert (axes.get_title(), axes.get_xlabel(), axes.get_ylabel()) == (
+            title,
+            x_label,
+            y_label,
+        )
+        assert len(axes.lines) == len(expected_lines)
+        for line, (label, x, y, color, linestyle, marker) in zip(
+            axes.lines, expected_lines, strict=True
+        ):
+            assert line.get_label() == label
+            np.testing.assert_allclose(line.get_xdata(), x)
+            np.testing.assert_allclose(line.get_ydata(), y)
+            assert line.get_color() == color
+            assert line.get_linestyle() == linestyle
+            assert line.get_marker() == marker
+        legend_labels = [text.get_text() for text in axes.get_legend().get_texts()]
+        assert legend_labels == [line[0] for line in expected_lines]
+        assert axes.get_xlim() == pytest.approx((0.0, 1.0))
+        assert axes.get_ylim() == pytest.approx(expected_ylim)
+    finally:
+        plt.close(figure)
+
+
+@pytest.mark.parametrize(
+    ("kind", "source_attribute"),
+    [
+        ("gains", "gains"),
+        ("lift", "gains"),
+        ("calibration", "calibration"),
+        ("threshold", "threshold_analysis"),
+    ],
+)
+def test_binary_risk_plot_does_not_call_computation_or_read_unrelated_tables(
+    monkeypatch: pytest.MonkeyPatch, kind: str, source_attribute: str
+) -> None:
+    from sharper import modeling as modeling_module
+    from sharper import risk_validation as risk_module
+
+    def forbidden(*args: object, **kwargs: object) -> object:
+        raise AssertionError("plot attempted forbidden recomputation")
+
+    monkeypatch.setattr(evaluation_module, "_binary_risk_evaluation", forbidden)
+    monkeypatch.setattr(modeling_module, "_fit_classifier_fold", forbidden)
+    monkeypatch.setattr(risk_module, "validate_binary_risk", forbidden)
+    result = _manual_binary_risk_plot_result()
+    unreadable = object()
+    table_attributes = {
+        "folds",
+        "predictions",
+        "excluded_rows",
+        "metrics",
+        "gains",
+        "calibration",
+        "threshold_analysis",
+        "operating_point",
+        "business_metrics",
+    }
+    replacements = {
+        attribute: unreadable
+        for attribute in table_attributes
+        if attribute != source_attribute
+    }
+    target_only = replace(result, **replacements)  # type: ignore[arg-type]
+    figure = plot_binary_risk_validation(target_only, kind=kind)  # type: ignore[arg-type]
+    plt.close(figure)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        pd.DataFrame(),
+        pd.Series(dtype=float),
+        np.asarray([1.0]),
+        [],
+        {},
+        BaseEstimator(),
+        None,
+    ],
+)
+def test_binary_risk_plot_rejects_all_raw_input_types(raw: object) -> None:
+    existing = set(plt.get_fignums())
+    with pytest.raises(
+        ValueError, match="^result must be a BinaryRiskValidationResult$"
+    ):
+        plot_binary_risk_validation(raw, kind="gains")  # type: ignore[arg-type]
+    assert set(plt.get_fignums()) == existing
+
+
+def test_binary_risk_figure_lifecycle_repeatability_and_global_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = _manual_binary_risk_plot_result()
+    table_snapshots = {
+        "gains": result.gains.copy(deep=True),
+        "calibration": result.calibration.copy(deep=True),
+        "threshold": result.threshold_analysis.copy(deep=True),
+    }
+    rc_before = matplotlib.rcParams.copy()
+    current = plt.figure()
+    current_axes = current.subplots()
+    current_axes.plot([0.0, 1.0], [1.0, 0.0])
+    current_line = tuple(current_axes.lines[0].get_ydata())
+    calls: list[str] = []
+    original_close = plt.close
+    original_figure_savefig = Figure.savefig
+
+    monkeypatch.setattr(plt, "show", lambda *args, **kwargs: calls.append("show"))
+    monkeypatch.setattr(
+        plt, "figure", lambda *args, **kwargs: calls.append("plt.figure")
+    )
+    monkeypatch.setattr(
+        plt, "subplots", lambda *args, **kwargs: calls.append("plt.subplots")
+    )
+    monkeypatch.setattr(
+        plt, "savefig", lambda *args, **kwargs: calls.append("plt.savefig")
+    )
+    monkeypatch.setattr(plt, "close", lambda *args, **kwargs: calls.append("close"))
+    monkeypatch.setattr(
+        Figure,
+        "savefig",
+        lambda *args, **kwargs: calls.append("Figure.savefig"),
+    )
+    first = plot_binary_risk_validation(result, kind="gains")
+    second = plot_binary_risk_validation(result, kind="gains")
+    detached = [first, second]
+    for kind in ("lift", "calibration", "threshold"):
+        before_axes = tuple(current.axes)
+        before_lines = tuple(tuple(line.get_ydata()) for line in current_axes.lines)
+        figure = plot_binary_risk_validation(result, kind=kind)  # type: ignore[arg-type]
+        detached.append(figure)
+        assert plt.gcf() is current
+        assert tuple(current.axes) == before_axes
+        assert (
+            tuple(tuple(line.get_ydata()) for line in current_axes.lines)
+            == before_lines
+        )
+        assert figure is not current
+        assert figure.axes[0] is not current_axes
+    assert first is not second
+    assert first.axes[0] is not second.axes[0]
+    assert plt.gcf() is current
+    assert calls == []
+    np.testing.assert_array_equal(
+        first.axes[0].lines[0].get_xdata(), second.axes[0].lines[0].get_xdata()
+    )
+    np.testing.assert_array_equal(
+        first.axes[0].lines[0].get_ydata(), second.axes[0].lines[0].get_ydata()
+    )
+    assert [line.get_label() for line in first.axes[0].lines] == [
+        line.get_label() for line in second.axes[0].lines
+    ]
+    assert tuple(current_axes.lines[0].get_ydata()) == current_line
+    assert matplotlib.rcParams == rc_before
+    pd.testing.assert_frame_equal(result.gains, table_snapshots["gains"])
+    pd.testing.assert_frame_equal(result.calibration, table_snapshots["calibration"])
+    pd.testing.assert_frame_equal(
+        result.threshold_analysis, table_snapshots["threshold"]
+    )
+    original_figure_savefig(first, io.BytesIO(), format="png")
+    for figure in detached:
+        original_close(figure)
+        assert plt.gcf() is current
+    original_close(current)
+
+
+@pytest.mark.parametrize("kind", ["gains", "lift", "calibration", "threshold"])
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "missing",
+        "empty",
+        "missing_column",
+        "wrong_dtype",
+        "nonfinite",
+        "unavailable",
+        "undefined",
+    ],
+)
+def test_binary_risk_each_kind_rejects_malformed_evidence_without_placeholder(
+    kind: str, scenario: str
+) -> None:
+    result = _manual_binary_risk_plot_result()
+    attribute = {
+        "gains": "gains",
+        "lift": "gains",
+        "calibration": "calibration",
+        "threshold": "threshold_analysis",
+    }[kind]
+    table = getattr(result, attribute).copy(deep=True)
+    if scenario == "missing":
+        replacement: object = None
+    elif scenario == "empty":
+        replacement = table.iloc[0:0].copy()
+    elif scenario == "missing_column":
+        replacement = table.drop(columns=[table.columns[-1]])
+    elif scenario == "wrong_dtype":
+        column = {
+            "gains": "requested_fraction",
+            "lift": "actual_fraction",
+            "calibration": "mean_predicted_probability",
+            "threshold": "threshold",
+        }[kind]
+        replacement = table.astype({column: "object"})
+    elif scenario == "nonfinite":
+        if kind == "calibration":
+            table.loc[table.index[0], "lower_bound"] = np.inf
+        else:
+            order = {
+                "gains": "requested_fraction",
+                "lift": "requested_fraction",
+                "threshold": "threshold",
+            }[kind]
+            table.loc[table.index[0], order] = np.inf
+        replacement = table
+    elif scenario == "unavailable":
+        if kind in ("gains", "lift"):
+            value = "capture" if kind == "gains" else "lift"
+            table.loc[table.index[0], value] = pd.NA
+            table.loc[table.index[0], f"{value}_status"] = "unavailable"
+            table.loc[table.index[0], f"{value}_reason"] = "probability_absent"
+        elif kind == "calibration":
+            table.loc[table.index[0], "status"] = "unavailable"
+            table.loc[table.index[0], "reason"] = "probability_absent"
+        else:
+            table.loc[table.index[0], "precision"] = pd.NA
+            table.loc[table.index[0], "precision_status"] = "unavailable"
+            table.loc[table.index[0], "precision_reason"] = "probability_absent"
+        replacement = table
+    else:
+        if kind in ("gains", "lift"):
+            value = "capture" if kind == "gains" else "lift"
+            table.loc[table.index[0], value] = pd.NA
+            table.loc[table.index[0], f"{value}_status"] = "undefined"
+            table.loc[table.index[0], f"{value}_reason"] = "zero_denominator"
+        elif kind == "calibration":
+            for column in (
+                "mean_predicted_probability",
+                "observed_event_rate",
+                "absolute_gap",
+                "weighted_gap",
+            ):
+                table[column] = pd.array([pd.NA] * len(table), dtype="Float64")
+            table.loc[:, "n_rows"] = 0
+            table.loc[:, "status"] = "undefined"
+            table.loc[:, "reason"] = "empty_bin"
+        else:
+            table.loc[table.index[0], "precision"] = pd.NA
+            table.loc[table.index[0], "precision_status"] = "undefined"
+            table.loc[table.index[0], "precision_reason"] = "zero_denominator"
+        replacement = table
+    malformed = replace(result, **{attribute: replacement})
+    table_before = table.copy(deep=True)
+    sentinel = plt.figure()
+    sentinel_axes = sentinel.subplots()
+    sentinel_axes.plot([0.0, 1.0], [1.0, 0.0])
+    sentinel_lines = tuple(tuple(line.get_ydata()) for line in sentinel_axes.lines)
+    existing = set(plt.get_fignums())
+    try:
+        match = (
+            f"^binary risk validation plot table has invalid schema: {kind}$"
+            if scenario == "wrong_dtype"
+            else None
+        )
+        with pytest.raises(ValueError, match=match):
+            plot_binary_risk_validation(malformed, kind=kind)  # type: ignore[arg-type]
+        assert set(plt.get_fignums()) == existing
+        assert plt.gcf() is sentinel
+        assert (
+            tuple(tuple(line.get_ydata()) for line in sentinel_axes.lines)
+            == sentinel_lines
+        )
+        pd.testing.assert_frame_equal(table, table_before)
+    finally:
+        plt.close(sentinel)
+
+
+@pytest.mark.parametrize("kind", ["gains", "lift"])
+@pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
+def test_binary_risk_gains_and_lift_reject_nonfinite_boundary_score_before_figure(
+    monkeypatch: pytest.MonkeyPatch, kind: str, invalid: float
+) -> None:
+    from sharper import visualization as visualization_module
+
+    result = _manual_binary_risk_plot_result()
+    table = result.gains.copy(deep=True)
+    table.loc[table.index[0], "boundary_score"] = invalid
+    malformed = replace(result, gains=table)
+    table_snapshots = {
+        attribute: getattr(malformed, attribute).copy(deep=True)
+        for attribute in (
+            "folds",
+            "predictions",
+            "excluded_rows",
+            "metrics",
+            "gains",
+            "calibration",
+            "threshold_analysis",
+            "operating_point",
+            "business_metrics",
+        )
+    }
+    sentinel = plt.figure()
+    sentinel_axes = sentinel.subplots()
+    sentinel_axes.plot([0.0, 1.0], [1.0, 0.0], label="sentinel")
+    sentinel_state = (
+        tuple(sentinel.axes),
+        tuple(sentinel_axes.get_xlim()),
+        tuple(sentinel_axes.get_ylim()),
+        tuple(
+            (tuple(line.get_xdata()), tuple(line.get_ydata()), line.get_label())
+            for line in sentinel_axes.lines
+        ),
+    )
+    existing = set(plt.get_fignums())
+
+    def forbidden_figure(*args: object, **kwargs: object) -> object:
+        raise AssertionError("invalid boundary_score attempted Figure creation")
+
+    monkeypatch.setattr(visualization_module, "_risk_axes", forbidden_figure)
+    try:
+        with pytest.raises(
+            ValueError,
+            match=f"^binary risk validation plot table has invalid schema: {kind}$",
+        ):
+            plot_binary_risk_validation(malformed, kind=kind)  # type: ignore[arg-type]
+        assert set(plt.get_fignums()) == existing
+        assert plt.gcf() is sentinel
+        assert sentinel_state == (
+            tuple(sentinel.axes),
+            tuple(sentinel_axes.get_xlim()),
+            tuple(sentinel_axes.get_ylim()),
+            tuple(
+                (tuple(line.get_xdata()), tuple(line.get_ydata()), line.get_label())
+                for line in sentinel_axes.lines
+            ),
+        )
+        for attribute, snapshot in table_snapshots.items():
+            pd.testing.assert_frame_equal(getattr(malformed, attribute), snapshot)
+    finally:
+        plt.close(sentinel)
 
 
 def test_classification_evaluation_figures_use_frozen_detail() -> None:

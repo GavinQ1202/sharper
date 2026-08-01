@@ -37,11 +37,18 @@ from sharper.modeling import (
 )
 from sharper.quality import QualityIssue, QualityReport, check_data_quality
 from sharper.reporting import ReportArtifact, generate_analysis_report
+from sharper.risk_validation import (
+    BinaryRiskValidationConfig,
+    BinaryRiskValidationResult,
+    ExternalRiskPredictions,
+    validate_binary_risk,
+)
 from sharper.schema import ColumnSchema, SchemaReport, TargetCandidate, infer_schema
 from sharper.summary import DataFrameSummary, summarize_dataframe
 from sharper.visualization import (
     PlotCollection,
     PlotResult,
+    plot_binary_risk_validation,
     plot_classification_evaluation,
     plot_correlations,
     plot_distributions,
@@ -108,4 +115,9 @@ __all__ = [
     "plot_target_relationships",
     "plot_classification_evaluation",
     "plot_regression_evaluation",
+    "BinaryRiskValidationConfig",
+    "ExternalRiskPredictions",
+    "BinaryRiskValidationResult",
+    "validate_binary_risk",
+    "plot_binary_risk_validation",
 ]
