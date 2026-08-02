@@ -509,3 +509,80 @@ are not returned; provenance is sanitized and fingerprinted. The shared
 condition kernel remains private. Task 16 does not clean data, train a model,
 execute policy, or integrate with the current workflow, report, or CLI. The
 package remains version `0.1.0`, and v0.2 has not been released.
+
+## Decision-strategy simulation
+
+Task 17 adds six separate opt-in symbols: `StrategyCondition`, `DecisionRule`,
+`DecisionConstraint`, `DecisionStrategyConfig`, `DecisionStrategyResult`, and
+`simulate_decision_strategy`.
+
+```python
+from datetime import datetime
+
+import pandas as pd
+
+from sharper import (
+    DecisionRule,
+    DecisionStrategyConfig,
+    StrategyCondition,
+    simulate_decision_strategy,
+)
+
+data = pd.DataFrame({"income": [40_000, 80_000]})
+condition = StrategyCondition(
+    "atomic", "lt", "column", "income", "literal", 50_000
+)
+rule = DecisionRule("income_review", "eligibility", 10, condition, "manual_review")
+config = DecisionStrategyConfig(
+    strategy_key="preloan_policy",
+    strategy_version="v1",
+    effective_from=datetime(2025, 1, 1),
+    expires_at=None,
+    evaluation_time=datetime(2025, 1, 2),
+    rules=(rule,),
+    default_action_name="selected",
+    unknown_action_name="manual_review",
+    action_role_mapping=(
+        ("selected", "selected"),
+        ("manual_review", "review"),
+    ),
+)
+result = simulate_decision_strategy(data, config)
+```
+
+`StrategyCondition` is a closed pure-data tree for the eleven approved atomic
+operators plus `and`, `or`, and `not`. Validation, normalization, and compilation
+delegate comparison, missing-value, non-finite, timezone, and three-valued Boolean
+semantics to the private Task 16 condition kernel. There is no mapping DSL,
+expression, callable, regex, dynamic import, or arbitrary-code path.
+
+`DecisionStrategyConfig` declares one strategy version and evaluation time,
+caller-defined action keys with a complete closed-role mapping, ordered eligibility
+and decision rules, optional evidence-only constraints, and bounded anonymous
+segment/time scopes. Unknown condition outcomes terminate through the declared safe
+unknown action; default and unknown rows remain decided. Constraints measure frozen
+simulated actions and never search thresholds, reorder rules, or modify an action.
+
+`simulate_decision_strategy(data, config, *, risk_validation=None,
+data_audit=None)` aligns optional Task 15 and Task 16 frozen results before reading
+their evidence. Task 15 non-time folds retain zero maturity counts independently of
+evaluable prediction membership; time modes retain their mature/evaluable and
+excluded/immature equalities. Ranking scores remain ranking-only. Only an aligned
+Task 15 event probability can enter expected loss and assumption-based payoff.
+Actual observed loss is consumed only as Task 15 overall aggregate evidence and is
+never resegmented by a simulated action.
+
+`DecisionStrategyResult` contains exactly eight typed tables: `row_decisions`,
+`rule_evaluations`, `rule_summary`, `action_summary`, `business_summary`,
+`constraint_summary`, `historical_transitions`, and `provenance`. Tables use
+zero-based row positions, deterministic ordering, independent long-form metric
+statuses, sanitized provenance, and SHA-256 fingerprints. They never retain the
+input DataFrame, config/tree objects, raw condition literals, raw historical or
+segment values, the raw positive label, estimators, or Figures.
+
+The exact signature, frozen fields, schemas, 13 constraint metrics, status/reason
+vocabulary, resource limits, and errors are frozen in the
+[Task 17 contract](decisions/task17-preloan-eligibility-strategy-contract.md).
+Task 17 is an offline simulation only: it does not execute approvals, optimize a
+policy, choose a winner, or integrate with the current workflow, report, or CLI.
+The package remains version `0.1.0`, and v0.2 has not been released.

@@ -270,9 +270,14 @@ def _smoke_artifact(
             "import sharper; "
             "assert sharper.__version__ == '0.1.0'; "
             "assert set(sharper.__all__) <= set(vars(sharper)); "
-            "assert sharper.__all__[-5:] == ['DataAuditRoles', 'ColumnAuditRule', "
-            "'DataAuditConfig', 'DataAuditResult', 'audit_data_quality']; "
-            "assert not hasattr(sharper, '_ConditionNode')",
+            "assert sharper.__all__[-11:-6] == ['DataAuditRoles', "
+            "'ColumnAuditRule', 'DataAuditConfig', 'DataAuditResult', "
+            "'audit_data_quality']; "
+            "assert sharper.__all__[-6:] == ['StrategyCondition', 'DecisionRule', "
+            "'DecisionConstraint', 'DecisionStrategyConfig', "
+            "'DecisionStrategyResult', 'simulate_decision_strategy']; "
+            "assert not hasattr(sharper, '_ConditionNode'); "
+            "assert not hasattr(sharper, '_compile_condition')",
         ],
         cwd=cwd,
         environment=environment,
@@ -291,6 +296,23 @@ def _smoke_artifact(
         environment=environment,
     )
     assert task16_smoke.stdout == ""
+
+    task17_smoke = _run(
+        [
+            str(python),
+            "-c",
+            "from datetime import datetime; import pandas as pd; "
+            "from sharper import DecisionStrategyConfig, simulate_decision_strategy; "
+            "c=DecisionStrategyConfig('s','v1',datetime(2025,1,1),None,"
+            "datetime(2025,1,2),(),'select','review',"
+            "(('select','selected'),('review','review'))); "
+            "r=simulate_decision_strategy(pd.DataFrame({'x':[1,2]}),c); "
+            "assert r.decided_n_rows == 2 and r.unavailable_n_rows == 0",
+        ],
+        cwd=cwd,
+        environment=environment,
+    )
+    assert task17_smoke.stdout == ""
 
     for command in (
         [str(console), "--help"],
@@ -416,6 +438,7 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         names = archive.namelist()
         assert "sharper/data_audit.py" in names
         assert "sharper/_condition_kernel.py" in names
+        assert "sharper/decision_strategy.py" in names
         metadata_name = next(
             name for name in names if name.endswith(".dist-info/METADATA")
         )
@@ -432,6 +455,13 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         names = archive.getnames()
         assert any(name.endswith("/src/sharper/data_audit.py") for name in names)
         assert any(name.endswith("/src/sharper/_condition_kernel.py") for name in names)
+        assert any(name.endswith("/src/sharper/decision_strategy.py") for name in names)
+        assert any(
+            name.endswith(
+                "/docs/decisions/task17-preloan-eligibility-strategy-contract.md"
+            )
+            for name in names
+        )
         assert any(name.endswith("/LICENSE") for name in names)
         assert any(name.endswith("/examples/basic_analysis.py") for name in names)
         assert any(name.endswith("/examples/baseline_modeling.py") for name in names)

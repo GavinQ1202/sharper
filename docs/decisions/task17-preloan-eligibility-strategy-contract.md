@@ -1,18 +1,24 @@
 # Task 17 — Pre-loan Eligibility Rules and Decision Strategy Simulation 精确合同
 
 **合同状态：** Approved — Go
-**Implementation 状态：** Not started
+**Implementation 状态：** Implementation complete — review Go
 
 **Review记录：** Full contract review：`No-Go`；targeted contract fixes：`complete`；bounded
 contract closure：`Go`；P0：`0`；P1：`0`；P2：`0`。Contract：`Approved — Go`；
-Implementation：`Not started`。不得再次进行开放式Task 17 full contract review。已通过review的
-Task 15/16结论保持关闭。
+Implementation：`Implementation complete — review Go`。不得再次进行开放式Task 17
+full contract review。已通过review的Task 15/16结论保持关闭。
 
 **Post-approval compatibility amendment：** Task 15 mode-dependent maturity alignment已定向修正；
 amendment bounded closure：`Go`；`T17-A1`：`closed`；P0：`0`；P1：`0`；P2：`0`。该
-post-approval compatibility amendment已批准；Implementation仍为`Not started`，partial
-implementation files不改变该状态。Amendment应先形成独立合同commit；commit完成后方可恢复Task
-17 implementation。不得再次进行开放式Task 17 full contract review。
+post-approval compatibility amendment已批准；amendment closure当时Implementation仍为
+`Not started`，partial implementation files不改变该历史状态。Amendment已先形成独立合同
+commit，随后恢复Task 17 implementation。不得再次进行开放式Task 17 full contract review。
+
+**Implementation记录：** Full implementation review：`No-Go`；targeted implementation
+fixes：`complete`；bounded implementation closure attempt 1：`No-Go`；residual targeted
+implementation fixes：`complete`；final bounded implementation closure：`Go`；P0：`0`；P1：
+`0`；P2：`0`。Implementation：`Implementation complete — review Go`。Task 17唯一一次开放式
+full implementation review已经完成，后续不得再次执行。
 
 **合同 drafting/targeted-fix/bounded-closure历史 scope：** 当时只新建本合同，并在closure时同步
 `SPEC.md`和`IMPLEMENTATION_PLAN.md`状态。本次post-approval targeted amendment scope仅为本合同
@@ -1097,8 +1103,10 @@ historical mapped reference actions和本次simulated challenger actions的same-
 transitions同时满足，不需要第二strategy输入或historical policy重放。
 
 Task 17合同阶段已完成，不得再次进行开放式Task 17 full contract review。合同当前为
-**Approved — Go**；Implementation仍是 **Not started**。Tasks 18--20尚未开始；v0.2整体尚未完成
-或发布；当前package version仍为`0.1.0`。`T17-A1` post-approval targeted compatibility
-amendment已批准，bounded amendment closure为`Go`且P0/P1/P2均为`0`。现有partial implementation
-files不表示implementation状态变化；本amendment必须先形成独立合同commit，commit完成后方可恢复
-Task 17 implementation。本轮不得恢复实现、暂存、提交或发布。
+**Approved — Go**；Implementation为 **Implementation complete — review Go**。
+`T17-A1` post-approval targeted compatibility amendment已批准，bounded amendment closure为
+`Go`且P0/P1/P2均为`0`。Task 17唯一一次开放式full implementation review已经完成，final
+bounded implementation closure为`Go`，Implementation为 **Implementation complete — review
+Go**，后续不得再次执行开放式Task 17 full implementation review。Tasks
+18--20尚未开始；v0.2整体尚未完成或发布；当前package version仍为`0.1.0`。本轮不提交、push、
+tag或发布，也不开始Task 18。

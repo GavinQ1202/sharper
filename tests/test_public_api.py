@@ -2,7 +2,7 @@
 
 import inspect
 from collections.abc import Sequence
-from dataclasses import fields, is_dataclass
+from dataclasses import MISSING, fields, is_dataclass
 from datetime import date, datetime, timedelta
 from importlib.metadata import entry_points
 from pathlib import Path
@@ -83,6 +83,14 @@ _TASK16_EXPORTS = (
     "DataAuditResult",
     "audit_data_quality",
 )
+_TASK17_EXPORTS = (
+    "StrategyCondition",
+    "DecisionRule",
+    "DecisionConstraint",
+    "DecisionStrategyConfig",
+    "DecisionStrategyResult",
+    "simulate_decision_strategy",
+)
 
 
 def test_version_contract() -> None:
@@ -106,7 +114,9 @@ def test_all_contains_only_implemented_public_api() -> None:
     assert tuple(sharper.__all__[: len(_V01_EXPORTS)]) == _V01_EXPORTS
     task15_end = len(_V01_EXPORTS) + len(_TASK15_EXPORTS)
     assert tuple(sharper.__all__[len(_V01_EXPORTS) : task15_end]) == _TASK15_EXPORTS
-    assert tuple(sharper.__all__[task15_end:]) == _TASK16_EXPORTS
+    task16_end = task15_end + len(_TASK16_EXPORTS)
+    assert tuple(sharper.__all__[task15_end:task16_end]) == _TASK16_EXPORTS
+    assert tuple(sharper.__all__[task16_end:]) == _TASK17_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
 
@@ -127,6 +137,299 @@ def test_task16_public_api_contract() -> None:
         assert is_dataclass(data_type)
         assert data_type.__dataclass_params__.frozen is True
     assert not any(name.startswith("_Condition") for name in sharper.__all__)
+
+
+def test_task17_public_api_contract() -> None:
+    """Task 17 appends exactly six opt-in symbols after the Task 16 suffix."""
+    assert str(inspect.signature(sharper.simulate_decision_strategy)) == (
+        "(data: 'pd.DataFrame', config: 'DecisionStrategyConfig', *, "
+        "risk_validation: 'BinaryRiskValidationResult | None' = None, "
+        "data_audit: 'DataAuditResult | None' = None) -> 'DecisionStrategyResult'"
+    )
+    expected_fields = {
+        sharper.StrategyCondition: (
+            "kind",
+            "operator",
+            "left_kind",
+            "left",
+            "right_kind",
+            "right",
+            "children",
+        ),
+        sharper.DecisionRule: (
+            "rule_key",
+            "phase",
+            "priority",
+            "condition",
+            "action_name",
+            "stop_on_hit",
+            "enabled",
+            "effective_from",
+            "expires_at",
+            "description_key",
+        ),
+        sharper.DecisionConstraint: (
+            "constraint_key",
+            "metric",
+            "operator",
+            "threshold",
+            "action_name",
+            "action_role",
+            "minimum_support",
+        ),
+        sharper.DecisionStrategyConfig: (
+            "strategy_key",
+            "strategy_version",
+            "effective_from",
+            "expires_at",
+            "evaluation_time",
+            "rules",
+            "default_action_name",
+            "unknown_action_name",
+            "action_role_mapping",
+            "constraints",
+            "ranking_score_column",
+            "ranking_score_direction",
+            "historical_action_column",
+            "historical_action_mapping",
+            "historical_policy_version",
+            "exposure_column",
+            "loss_fraction",
+            "action_assumptions",
+            "exposure_unit",
+            "segment_columns",
+            "time_slice_column",
+        ),
+        sharper.DecisionStrategyResult: (
+            "strategy_key",
+            "strategy_version",
+            "strategy_fingerprint",
+            "input_n_rows",
+            "decided_n_rows",
+            "unavailable_n_rows",
+            "requested_rule_count",
+            "active_rule_count",
+            "requested_constraint_count",
+            "row_decisions",
+            "rule_evaluations",
+            "rule_summary",
+            "action_summary",
+            "business_summary",
+            "constraint_summary",
+            "historical_transitions",
+            "provenance",
+            "warnings",
+            "limitations",
+        ),
+    }
+    for data_type, names in expected_fields.items():
+        assert is_dataclass(data_type)
+        assert data_type.__dataclass_params__.frozen is True
+        assert tuple(field.name for field in fields(data_type)) == names
+    assert not hasattr(sharper, "_compile_condition")
+    assert not any(name.startswith("_Condition") for name in sharper.__all__)
+
+
+def test_task17_public_dataclass_docstrings_cover_contract_boundaries() -> None:
+    """Task 17 public containers document every field and safety boundary."""
+    expected = {
+        sharper.StrategyCondition: {
+            "kind": ("Required.",),
+            "operator": ("Default: ``None``.", "Boolean nodes"),
+            "left_kind": ("Default: ``None``.", "request no left source"),
+            "left": ("Default: ``None``.", "have no column name"),
+            "right_kind": ("Default: ``None``.", "have no right source"),
+            "right": ("Default: ``None``.", "No right operand"),
+            "children": ("Default: ``()``.", "No child conditions"),
+        },
+        sharper.DecisionRule: {
+            "rule_key": ("Required.",),
+            "phase": ("Required.",),
+            "priority": ("Required.",),
+            "condition": ("Required.",),
+            "action_name": ("Required.",),
+            "stop_on_hit": ("Default: ``True``.", "stops later rule application"),
+            "enabled": ("Default: ``True``.", "participates"),
+            "effective_from": ("Default: ``None``.", "inherits the strategy start"),
+            "expires_at": ("Default: ``None``.", "inherits the strategy expiry"),
+            "description_key": ("Default: ``None``.", "No safe description"),
+        },
+        sharper.DecisionConstraint: {
+            "constraint_key": ("Required.",),
+            "metric": ("Required.",),
+            "operator": ("Required.",),
+            "threshold": ("Required.",),
+            "action_name": ("Default: ``None``.", "No action-key scope"),
+            "action_role": ("Default: ``None``.", "No closed-role scope"),
+            "minimum_support": ("Default: ``1``.", "supporting row"),
+        },
+        sharper.DecisionStrategyConfig: {
+            "strategy_key": ("Required.",),
+            "strategy_version": ("Required.",),
+            "effective_from": ("Required.",),
+            "expires_at": ("Required.", "``None`` means", "no exclusive expiry"),
+            "evaluation_time": ("Required.",),
+            "rules": ("Required.", "``()``", "no rules"),
+            "default_action_name": ("Required.",),
+            "unknown_action_name": ("Required.",),
+            "action_role_mapping": ("Required.",),
+            "constraints": ("Default: ``()``.", "No evidence-only constraints"),
+            "ranking_score_column": (
+                "Default: ``None``.",
+                "No DataFrame ranking-score column",
+            ),
+            "ranking_score_direction": (
+                "Default: ``None``.",
+                "No DataFrame ranking direction",
+            ),
+            "historical_action_column": (
+                "Default: ``None``.",
+                "No historical action column",
+            ),
+            "historical_action_mapping": (
+                "Default: ``()``.",
+                "No historical raw-value-to-action mappings",
+            ),
+            "historical_policy_version": (
+                "Default: ``None``.",
+                "No sanitized historical policy version",
+            ),
+            "exposure_column": (
+                "Default: ``None``.",
+                "No row-level exposure evidence",
+            ),
+            "loss_fraction": (
+                "Default: ``None``.",
+                "No constant or DataFrame loss-fraction evidence",
+            ),
+            "action_assumptions": (
+                "Default: ``()``.",
+                "No action value or cost assumptions",
+            ),
+            "exposure_unit": (
+                "Default: ``None``.",
+                "No common opaque exposure/loss unit",
+            ),
+            "segment_columns": (
+                "Default: ``()``.",
+                "No segment or segment-time stability scopes",
+            ),
+            "time_slice_column": (
+                "Default: ``None``.",
+                "No time-slice or segment-time scopes",
+            ),
+        },
+        sharper.DecisionStrategyResult: {
+            "strategy_key": ("Required.",),
+            "strategy_version": ("Required.",),
+            "strategy_fingerprint": ("Required.",),
+            "input_n_rows": ("Required.",),
+            "decided_n_rows": ("Required.",),
+            "unavailable_n_rows": ("Required.",),
+            "requested_rule_count": ("Required.",),
+            "active_rule_count": ("Required.",),
+            "requested_constraint_count": ("Required.",),
+            "row_decisions": ("Required.",),
+            "rule_evaluations": ("Required.",),
+            "rule_summary": ("Required.",),
+            "action_summary": ("Required.",),
+            "business_summary": ("Required.",),
+            "constraint_summary": ("Required.",),
+            "historical_transitions": ("Required.",),
+            "provenance": ("Required.",),
+            "warnings": ("Required.", "``()`` means no warning"),
+            "limitations": ("Required.", "``()`` means no limitation"),
+        },
+    }
+    expected_defaults = {
+        sharper.StrategyCondition: {
+            "operator": None,
+            "left_kind": None,
+            "left": None,
+            "right_kind": None,
+            "right": None,
+            "children": (),
+        },
+        sharper.DecisionRule: {
+            "stop_on_hit": True,
+            "enabled": True,
+            "effective_from": None,
+            "expires_at": None,
+            "description_key": None,
+        },
+        sharper.DecisionConstraint: {
+            "action_name": None,
+            "action_role": None,
+            "minimum_support": 1,
+        },
+        sharper.DecisionStrategyConfig: {
+            "constraints": (),
+            "ranking_score_column": None,
+            "ranking_score_direction": None,
+            "historical_action_column": None,
+            "historical_action_mapping": (),
+            "historical_policy_version": None,
+            "exposure_column": None,
+            "loss_fraction": None,
+            "action_assumptions": (),
+            "exposure_unit": None,
+            "segment_columns": (),
+            "time_slice_column": None,
+        },
+        sharper.DecisionStrategyResult: {},
+    }
+    forbidden = (
+        "production approval execution",
+        "automatic optimization",
+        "event_probability_column",
+        "task 18",
+        "task 19",
+        "task 20",
+    )
+    for data_type, expected_fields in expected.items():
+        doc = inspect.getdoc(data_type)
+        assert doc is not None
+        lowered = doc.lower()
+        for section in (
+            "summary",
+            "attributes",
+            "validation / errors",
+            "missing / unavailable behavior",
+            "side effects / immutability",
+            "example",
+        ):
+            assert section in lowered
+        attributes = doc.split("Attributes\n----------", maxsplit=1)[1].split(
+            "Validation / Errors", maxsplit=1
+        )[0]
+        entries: dict[str, list[str]] = {}
+        current: str | None = None
+        for line in attributes.splitlines():
+            if line and not line.startswith(" "):
+                current = line.strip()
+                entries[current] = []
+            elif current is not None and line.strip():
+                entries[current].append(line.strip())
+        runtime_fields = {field.name: field for field in fields(data_type)}
+        actual_fields = set(runtime_fields)
+        assert set(expected_fields) == actual_fields
+        assert set(entries) == actual_fields
+        assert set(expected_defaults[data_type]) <= actual_fields
+        for field_name, tokens in expected_fields.items():
+            field_doc = " ".join(entries[field_name])
+            assert all(token in field_doc for token in tokens)
+            if field_name not in expected_defaults[data_type]:
+                assert runtime_fields[field_name].default is MISSING
+                assert "Default:" not in field_doc
+            else:
+                assert (
+                    runtime_fields[field_name].default
+                    == expected_defaults[data_type][field_name]
+                )
+                assert "Required." not in field_doc
+        assert "validat" in lowered
+        assert "frozen" in lowered
+        assert not any(claim in lowered for claim in forbidden)
 
 
 def test_task15_public_api_signatures_fields_and_export_order() -> None:

@@ -110,9 +110,9 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 CI 门禁已就绪，尚未发布到 PyPI。
 
 v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
-opt-in 二分类风险验证 API 已实现并通过 review；Task 16 的 opt-in data audit 已实现并
-等待 implementation diff review；Tasks 17–20 尚未实现，v0.2 整体也尚未发布。当前
-package version 仍为 `0.1.0`。
+opt-in 二分类风险验证 API 与 Task 16 opt-in data audit 已实现并通过 review；Task 17
+opt-in decision-strategy simulation 已实现并等待 implementation diff review。Tasks 18–20
+尚未实现，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
 
 ## Opt-in 二分类风险验证（Task 15）
 
@@ -147,7 +147,7 @@ figure.savefig("gains.png")
 ```
 
 Figure 由 caller 持有并负责保存或关闭。Task 15 只表示该 opt-in 能力已经实现，不代表
-Tasks 16–20、v0.2 workflow/CLI integration 或 v0.2 release 已完成。
+Tasks 18–20、v0.2 workflow/CLI integration 或 v0.2 release 已完成。
 
 ## Opt-in 数据质量与泄漏审计（Task 16）
 
@@ -171,7 +171,53 @@ result = audit_data_quality(
 ```
 
 shared condition kernel 是 private implementation，不是 public DSL。Task 16 未接入现有
-workflow、report 或 CLI，也不表示 Tasks 17–20 或 v0.2 release 已完成。
+workflow、report 或 CLI，也不表示 Tasks 18–20 或 v0.2 release 已完成。
+
+## Opt-in 贷前决策策略模拟（Task 17）
+
+Task 17 新增 `StrategyCondition`、`DecisionRule`、`DecisionConstraint`、
+`DecisionStrategyConfig`、`DecisionStrategyResult` 和 `simulate_decision_strategy`。它执行
+caller 冻结的两阶段 eligibility/decision rules，返回离线 simulated actions、rule evidence、
+约束测量、业务 evidence、历史动作 transitions 和匿名 segment/time stability summaries：
+
+```python
+from datetime import datetime
+
+import pandas as pd
+
+from sharper import (
+    DecisionRule,
+    DecisionStrategyConfig,
+    StrategyCondition,
+    simulate_decision_strategy,
+)
+
+data = pd.DataFrame({"income": [40_000, 80_000]})
+condition = StrategyCondition(
+    "atomic", "lt", "column", "income", "literal", 50_000
+)
+rule = DecisionRule("income_review", "eligibility", 10, condition, "manual_review")
+config = DecisionStrategyConfig(
+    strategy_key="preloan_policy",
+    strategy_version="v1",
+    effective_from=datetime(2025, 1, 1),
+    expires_at=None,
+    evaluation_time=datetime(2025, 1, 2),
+    rules=(rule,),
+    default_action_name="selected",
+    unknown_action_name="manual_review",
+    action_role_mapping=(
+        ("selected", "selected"),
+        ("manual_review", "review"),
+    ),
+)
+result = simulate_decision_strategy(data, config)
+```
+
+Conditions 使用封闭 operators 并委托 Task 16 private kernel；不存在 expression、callable 或
+任意代码执行入口。Ranking score 不会升级为 probability；expected loss/payoff 只消费已对齐的
+Task 15 event probability。Constraints 只测量 frozen actions，不搜索 cutoff、改写 actions 或
+选择 winner。该 API 不执行真实审批，不接入现有 workflow/report/CLI，也不表示 v0.2 已发布。
 
 ### Development environment
 

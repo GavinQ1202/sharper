@@ -21,6 +21,14 @@ from sharper.data_audit import (
     DataAuditRoles,
     audit_data_quality,
 )
+from sharper.decision_strategy import (
+    DecisionConstraint,
+    DecisionRule,
+    DecisionStrategyConfig,
+    DecisionStrategyResult,
+    StrategyCondition,
+    simulate_decision_strategy,
+)
 from sharper.evaluation import (
     ClassificationEvaluation,
     RegressionEvaluation,
@@ -132,4 +140,10 @@ __all__ = [
     "DataAuditConfig",
     "DataAuditResult",
     "audit_data_quality",
+    "StrategyCondition",
+    "DecisionRule",
+    "DecisionConstraint",
+    "DecisionStrategyConfig",
+    "DecisionStrategyResult",
+    "simulate_decision_strategy",
 ]
