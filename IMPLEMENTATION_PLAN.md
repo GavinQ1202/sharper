@@ -4,7 +4,8 @@
 
 Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通过 review，
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
-`Approved — Go`，implementation 已完成且 review 为 `Go`。Tasks 17--20 contracts 和 implementation 均未开始；
+`Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
+`Approved — Go`，implementation 尚未开始。Tasks 18--20 contracts 和 implementation 均未开始；
 v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
 v0.1 保持以下完整轻量闭环：
 
@@ -1289,7 +1290,8 @@ Tasks 01–13。
 
 v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完成且 bounded
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
-且 review 为 `Go`；Tasks 17--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
+且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 尚未开始。
+Tasks 18--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
 
 **目标**
 
@@ -1332,8 +1334,9 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 **合同：** `docs/decisions/task16-data-quality-leakage-contract.md`（Approved — Go）。
 
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
-已完成且 review 为 `Go`。Tasks 17--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，
-当前 package version 仍为 `0.1.0`。
+已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 尚未开始；
+Tasks 18--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package
+version 仍为 `0.1.0`。
 
 **目标**
 
@@ -1367,7 +1370,14 @@ condition kernel 不导出为 public DSL，不接受 `eval`、任意 Python、ca
 
 ### Task 17 — Pre-loan Eligibility Rules and Decision Strategy Simulation
 
-**状态：规划已批准，合同未开始。**
+**状态：Contract Approved — Go；Implementation not started。**
+
+**合同：** `docs/decisions/task17-preloan-eligibility-strategy-contract.md`（Approved — Go）。
+
+唯一一次full contract review为`No-Go`；targeted contract fixes已完成；bounded contract closure
+为`Go`，P0/P1/P2均为`0`。Task 17合同阶段已完成，不得再次进行开放式Task 17 full contract
+review。Task 17 implementation尚未开始；Tasks 18--20尚未开始；v0.2整体尚未完成或发布，当前
+package version仍为`0.1.0`。
 
 **目标**
 

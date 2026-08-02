@@ -787,9 +787,9 @@ readiness 已完成，但尚未发布到 PyPI；详细范围以
 ## 16. v0.2 已批准路线
 
 v0.2 roadmap 已通过统一 review；Task 15 implementation review 已通过且 Task 15 已完成；
-Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成且 review 为 `Go`。Tasks 17--20
-contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package version 仍为
-`0.1.0`。其权威路线合同为
+Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成且 review 为 `Go`；Task 17
+contract 已批准为 `Approved — Go`，implementation 尚未开始。Tasks 18--20 contracts 和
+implementation 均未开始；v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。其权威路线合同为
 `docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何
 Task 15--20 public symbol、签名或 dataclass 字段。
 
