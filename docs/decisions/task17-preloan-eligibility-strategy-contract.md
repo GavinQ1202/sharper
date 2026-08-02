@@ -8,14 +8,19 @@ contract closure：`Go`；P0：`0`；P1：`0`；P2：`0`。Contract：`Approved 
 Implementation：`Not started`。不得再次进行开放式Task 17 full contract review。已通过review的
 Task 15/16结论保持关闭。
 
-**合同 drafting/targeted-fix scope：** 只新建
-`docs/decisions/task17-preloan-eligibility-strategy-contract.md`；本次bounded closure仅额外允许
-同步本文件、`SPEC.md`和`IMPLEMENTATION_PLAN.md`的状态记录。明确排除代码、tests、roadmap、
-Task 15/16 合同、README、API 文档、workflow/reporting/CLI、依赖、lock、package version、
-commit、push、tag 和发布。阻塞条件是
+**Post-approval compatibility amendment：** Task 15 mode-dependent maturity alignment已定向修正；
+amendment bounded closure：`Go`；`T17-A1`：`closed`；P0：`0`；P1：`0`；P2：`0`。该
+post-approval compatibility amendment已批准；Implementation仍为`Not started`，partial
+implementation files不改变该状态。Amendment应先形成独立合同commit；commit完成后方可恢复Task
+17 implementation。不得再次进行开放式Task 17 full contract review。
+
+**合同 drafting/targeted-fix/bounded-closure历史 scope：** 当时只新建本合同，并在closure时同步
+`SPEC.md`和`IMPLEMENTATION_PLAN.md`状态。本次post-approval targeted amendment scope仅为本合同
+内的`T17-A1/P1`；明确排除代码、tests、roadmap、Task 15/16 合同、README、API 文档、
+workflow/reporting/CLI、依赖、lock、package version、commit、push、tag 和发布。阻塞条件是
 本合同与已批准 roadmap、Task 15/16 frozen schema/ownership 或 v0.1 compatibility 发生无法
-在本文件内消解的冲突。当前只允许bounded closure验证C1--C7是否关闭及直接回归；不得重开
-已关闭结论或扩围。
+在本文件内消解的冲突。本次只允许定向修正mode-dependent maturity alignment；不得执行bounded
+amendment closure、重开已关闭结论或扩围。
 
 ## 1. 权威依据、目标与边界
 
@@ -135,19 +140,58 @@ evaluable_n_rows == len(prediction_evaluable_positions)
 input_n_rows == len(data)
 ```
 
-逐fold还必须满足`validation_n == len(validation_row_positions)`、
-`evaluable_validation_n == validation_mature_n ==
-len(evaluable_validation_row_positions)`、`validation_excluded_n == immature_validation_n ==
-validation_n - evaluable_validation_n`。`eligible_n_rows`必须等于`input_n_rows`减去
+Task 15 closed `validation_mode` inventory精确为`stratified_holdout`、`stratified_kfold`、
+`group_holdout`、`group_kfold`、`time_holdout`和`time_forward`；Task 17不得根据maturity count
+猜mode，也不得创造新的public mode key。所有mode逐fold共同满足：
+
+```text
+validation_n == len(validation_row_positions)
+evaluable_validation_n == len(evaluable_validation_row_positions)
+```
+
+`prediction_evaluable_positions == fold_evaluable_positions`继续保证prediction的`is_evaluable`
+与fold evaluable membership逐position一致。上述通用position、fold membership、fold_id、union、
+overlap、coverage和top-level count检查不因maturity分类而削弱。
+
+对time-based modes `time_holdout`和`time_forward`，另须精确继承Task 15 frozen maturity语义：
+
+```text
+validation_mature_n == evaluable_validation_n
+validation_excluded_n == immature_validation_n
+validation_excluded_n == validation_n - evaluable_validation_n
+```
+
+Task 17只核对Task 15声明的mature/evaluable/immature scopes与counts，不读取日期重新计算label
+maturity，不重新分类任何row。
+
+对non-time modes `stratified_holdout`、`stratified_kfold`、`group_holdout`和`group_kfold`，Task 15
+冻结的maturity provenance为not applicable，因此逐fold必须满足：
+
+```text
+validation_mature_n == 0
+validation_excluded_n == 0
+immature_validation_n == 0
+```
+
+这些0值不改变独立的evaluable membership：合法non-time fold允许
+`validation_mature_n == 0`且`evaluable_validation_n > 0`，其predictions、ranking score和合法
+event probability仍可消费；不得因maturity count为0把evaluable rows解释为0、把evidence降级为
+unavailable或拒绝source。
+
+`eligible_n_rows`必须等于`input_n_rows`减去
 `excluded_rows.reason == "missing_target"`的position数；predicted/excluded合并后不得missing、
 duplicate或extra。所有position必须是exact non-boolean built-in int、0-based且位于
 `[0, input_n_rows)`；不得使用pandas index。
 
 Task 17只验证上述Task 15声明的source scope，不重新定义其`missing_target`、`training_only`、
 `before_first_validation_window`、`outside_validation_window`、immature或evaluable语义，也不
-修复result。任一schema、count、union、fold membership、fold_id、is_evaluable、overlap或coverage
-关系失败，统一在任何求值前抛`ValueError("strategy source alignment: <key>")`；不得降级为
-row unknown、静默丢行或修改Task 15 input/result。
+修复result。增强alignment precedence固定为：1) 调用Task 15 frozen result validation；2) 读取其
+frozen `validation_mode`；3) 验证通用position/fold/evaluable不变量；4) 按上述准确mode验证对应
+maturity语义；5) 验证top-level counts与source scope；6) 全部通过后才允许消费ranking score或
+event probability。任一schema、count、union、fold membership、fold_id、is_evaluable、overlap、
+coverage或maturity关系失败，统一在任何求值前抛
+`ValueError("strategy source alignment: <key>")`；不得降级为row unknown、静默丢行、先消费
+probability或修改Task 15 input/result。
 
 ## 4. Frozen public API
 
@@ -863,6 +907,18 @@ decision strategy resource limit exceeded: <key>
 Config包括wrong dataclass exact type、key/priority/action/mapping/constraint/time/source cardinality；
 input schema包括DataFrame type、labels、duplicate columns、missing/unsupported columns/dtypes；
 alignment包括Task 15/16 schema/provenance/positions/scope；resource包括所有fixed budgets。
+Task 15 maturity alignment的closed stable keys至少精确区分：
+
+```text
+maturity_count_mismatch
+non_time_maturity_count_nonzero
+time_mode_maturity_mismatch
+```
+
+`maturity_count_mismatch`只用于不属于mode-specific三元关系的通用maturity/count schema不一致；
+non-time任一冻结maturity count非0使用`non_time_maturity_count_nonzero`；time-based mature、
+immature、excluded或evaluable关系不一致使用`time_mode_maturity_mismatch`。Keys固定且不拼接fold
+id或raw值；public prefix仍为`strategy source alignment:`。
 Task 16 kernel `condition specification is invalid`中operator/operand/children/version/window keys映射
 到`decision condition is invalid`；depth/nodes/membership/string budget keys映射resource prefix；
 kernel `condition evaluation is invalid`中的unsupported dtype映射input schema，其他值域语义保留
@@ -870,8 +926,10 @@ kernel `condition evaluation is invalid`中的unsupported dtype映射input schem
 
 Validation precedence固定：exact top-level types -> resource-independent config shape -> key/time/
 priority uniqueness -> complete public condition trees -> fixed resource limits -> input DataFrame/
-column labels -> declared source schema -> Task 15 alignment -> Task 16 alignment -> all value family/
-finite/range scans -> evaluation。任何validation error前不得返回partial result。
+column labels -> declared source schema -> Task 15 frozen validator -> Task 15 validation mode -> common
+position/fold/evaluable alignment -> mode-dependent maturity alignment -> top-level count/source-scope
+alignment -> Task 16 alignment -> all value family/finite/range scans -> evaluation。任何validation
+error前不得返回partial result或消费Task 15 score/probability。
 
 ## 17. Future implementation test matrix
 
@@ -921,6 +979,23 @@ Tests必须是可使错误实现失败的直接证据，而非主题清单。
   但错误fold_id、错误is_evaluable、fold validation重复、prediction重复、missing/extra position、
   predicted/excluded overlap、declared source scope未覆盖、wrong counts；均必须被Task 17增强alignment
   检查拒绝。合法多fold与duplicate pandas index按positions通过。
+- 合法`stratified_kfold` direct fixture逐fold使用手工冻结值
+  `validation_n=4, evaluable_validation_n=4, validation_mature_n=0,
+  validation_excluded_n=0, immature_validation_n=0`；alignment必须通过，ranking及合法Task 15
+  event probability均可消费，证明non-time maturity 0不表示evaluable 0或evidence unavailable。
+- 合法`time_forward` direct fixture按Task 15 frozen fold tuples/counts证明
+  `validation_mature_n == evaluable_validation_n`且
+  `validation_excluded_n == immature_validation_n == validation_n - evaluable_validation_n`；alignment
+  必须通过，spy/未来日期sentinel证明Task 17未重算或重分类maturity。
+- Non-time fixture只把`validation_mature_n`改为正数，必须以
+  `strategy source alignment: non_time_maturity_count_nonzero`失败；time-based fixture分别破坏
+  mature/evaluable及excluded/immature关系，必须以
+  `strategy source alignment: time_mode_maturity_mismatch`失败。另有通用count-schema mismatch
+  fixture命中`maturity_count_mismatch`。这些expected均为手工常量或Task 15批准公式，不调用Task
+  17 production helper生成。
+- Mode-dependent fixtures与原有union/fold_id/is_evaluable/duplicate/missing/extra/overlap/coverage
+  fixtures同时保留；测试必须使“只删除mature=evaluable equality却不验证non-time三项0值和time
+  三元关系”的错误实现失败。
 - Immature/excluded rows仍可pure-rule action但score condition unknown，target不进入denominator；
   以future-only outcome改变fixture证明不改变actions/cutoffs。
 
@@ -1023,4 +1098,7 @@ transitions同时满足，不需要第二strategy输入或historical policy重�
 
 Task 17合同阶段已完成，不得再次进行开放式Task 17 full contract review。合同当前为
 **Approved — Go**；Implementation仍是 **Not started**。Tasks 18--20尚未开始；v0.2整体尚未完成
-或发布；当前package version仍为`0.1.0`。本轮不得据此实现、暂存、提交或发布。
+或发布；当前package version仍为`0.1.0`。`T17-A1` post-approval targeted compatibility
+amendment已批准，bounded amendment closure为`Go`且P0/P1/P2均为`0`。现有partial implementation
+files不表示implementation状态变化；本amendment必须先形成独立合同commit，commit完成后方可恢复
+Task 17 implementation。本轮不得恢复实现、暂存、提交或发布。
