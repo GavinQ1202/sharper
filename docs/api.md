@@ -586,3 +586,48 @@ vocabulary, resource limits, and errors are frozen in the
 Task 17 is an offline simulation only: it does not execute approvals, optimize a
 policy, choose a winner, or integrate with the current workflow, report, or CLI.
 The package remains version `0.1.0`, and v0.2 has not been released.
+
+## Post-loan early warning and lifecycle monitoring
+
+Task 18 adds seven separate opt-in symbols: `MonitoringCondition`, `EarlyWarningRule`,
+`WarningScenario`, `LifecycleState`, `LifecycleMonitoringConfig`,
+`LifecycleMonitoringResult`, and `monitor_lifecycle`.
+
+```python
+from sharper import monitor_lifecycle
+
+result = monitor_lifecycle(
+    data,
+    config,
+    risk_validation=None,
+    data_audit=None,
+)
+```
+
+The exact public signature is
+`monitor_lifecycle(data, config, *, risk_validation=None, data_audit=None)`.
+`LifecycleMonitoringResult` contains exactly eleven typed tables:
+`observation_history`, `rule_evaluations`, `notifications`, `alert_episodes`,
+`event_matches`, `state_history`, `state_transitions`, `monitoring_summary`,
+`scenario_comparison`, `lifecycle_summary`, and `provenance`.
+
+`scenario_comparison` has exactly these columns, in order:
+`reference_scenario_key`, `comparator_scenario_key`, `metric`, `scope_key`,
+`scope_position`, `rule_key`, `reference_value`, `comparator_value`, `delta`,
+`numerator`, `denominator`, `support_n`, `support_unit`, `status`, `reason`,
+`finding_key`. Typed-empty tables retain the same columns and the frozen pandas
+nullable dtypes. Comparison rows cover only the nine eligible scenario-bearing
+scopes: `scenario`, `scenario_rule`, `scenario_alert_level`, `scenario_segment`,
+`scenario_time`, `scenario_cohort`, `scenario_vintage`, `scenario_state`, and
+`scenario_transition`. `overall`, `segment_time`, `cohort_time`, and
+`vintage_state` are not comparison scopes. Source-local scenario ordinals are
+excluded from `scenario` and `scenario_rule` equality identity; the normalized
+subordinate ordinal must match for the other seven scopes.
+
+Summary resource gates run in the frozen order
+`monitoring_summary_rows` → `lifecycle_summary_rows` →
+`scenario_comparison_rows`; the comparison maximum is 200,000 rows. Task 18 is
+offline and opt-in, does not send notifications or execute account/collection
+actions, and does not integrate with the current workflow, report, or CLI. Its
+implementation is `Implementation complete — review Go`; final validation is complete;
+the package remains version `0.1.0` and v0.2 has not been released.

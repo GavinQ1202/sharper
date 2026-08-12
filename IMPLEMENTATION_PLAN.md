@@ -6,7 +6,7 @@ Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通�
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18 contract已批准为`Approved — Go`，
-final bounded contract closure为`Go`，implementation为`Not started`；Tasks 19--20
+final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Tasks 19--20
 contracts 和 implementation 均未开始；
 v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
 v0.1 保持以下完整轻量闭环：
@@ -1294,7 +1294,7 @@ v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完�
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
 且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Not started`；Tasks 19--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
+`Implementation complete — review Go`且 final validation 已完成；Tasks 19--20 contracts 和 implementation 均未开始。不得跨 Task 提前实现。
 
 **目标**
 
@@ -1339,7 +1339,7 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
 已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Not started`；Tasks 19--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package
+`Implementation complete — review Go`且 final validation 已完成；Tasks 19--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package
 version 仍为 `0.1.0`。
 
 **目标**
@@ -1386,7 +1386,7 @@ implementation fixes已完成，第一次bounded implementation closure为`No-Go
 implementation fixes已完成，final bounded implementation closure为`Go`，P0/P1/P2均为`0`。
 Task 17 implementation complete — review Go，后续不得再次执行开放式full implementation review；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Not started`；Tasks 19--20 contracts和implementation尚未开始；v0.2整体尚未完成或发布，当前package version
+`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Tasks 19--20 contracts和implementation尚未开始；v0.2整体尚未完成或发布，当前package version
 仍为`0.1.0`。
 
 **目标**
@@ -1423,13 +1423,16 @@ results。不得依赖 Task 18。
 
 ### Task 18 — Post-loan Early Warning and Lifecycle Monitoring
 
-**状态：Contract Approved — Go；final bounded contract closure Go；Implementation Not started。**
+**状态：Contract Approved — Go；final bounded contract closure Go；Implementation complete — review Go；final validation complete。**
 
 **合同：** `docs/decisions/task18-post-loan-early-warning-lifecycle-contract.md`
 （唯一一次full contract review为No-Go；original P0=2、P1=6、P2=0；targeted contract fixes complete；
 首次bounded contract closure因`T18-CR-01` RHS operand role-isolation gap为No-Go；residual targeted
 contract fix complete；final bounded contract closure为Go，Closure P0/P1/P2均为0；不得再次执行开放式full
 contract review）。
+
+Task18D-1、Task18D-2a及最终 validation 已完成；唯一一次 full implementation review 与 bounded
+implementation closure 已完成，review 为 `Go`。当前状态为 `Implementation complete — review Go`。
 
 **目标**
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -21,6 +23,66 @@ PROJECT_PYTHON = PROJECT_VENV / (
     "Scripts/python.exe" if os.name == "nt" else "bin/python"
 )
 VERSION = "0.1.0"
+OFFLINE_CACHE_ENV = "SHARPER_DISTRIBUTION_OFFLINE_CACHE_ROOT"
+OFFLINE_CACHE_FORMAT = 1
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _prepared_cache() -> tuple[Path, dict[str, object]]:
+    configured = os.environ.get(OFFLINE_CACHE_ENV)
+    if not configured:
+        raise AssertionError(
+            "prepared offline distribution cache required; run "
+            "scripts/prepare-distribution-offline-cache.py"
+        )
+    root = Path(configured).expanduser().absolute().resolve()
+    if PROJECT_ROOT in root.parents or root == PROJECT_ROOT:
+        raise AssertionError("prepared offline distribution cache must be outside repo")
+    if root == Path.home() / ".cache" / "uv":
+        raise AssertionError(
+            "prepared offline distribution cache cannot be global uv cache"
+        )
+    manifest_path = root / "manifest.json"
+    if not manifest_path.is_file():
+        raise AssertionError("prepared offline cache manifest is missing")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AssertionError("prepared offline cache manifest is invalid") from exc
+    if (
+        manifest.get("ready") is not True
+        or manifest.get("format_version") != OFFLINE_CACHE_FORMAT
+        or manifest.get("package_version") != VERSION
+        or manifest.get("cache_identifier") != "uv-cache"
+    ):
+        raise AssertionError("prepared offline cache is stale/incompatible")
+    expected_platform = {
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "implementation": platform.python_implementation(),
+    }
+    if manifest.get("python") != f"{sys.version_info.major}.{sys.version_info.minor}":
+        raise AssertionError("prepared offline cache is stale/incompatible")
+    if manifest.get("platform") != expected_platform:
+        raise AssertionError("prepared offline cache is stale/incompatible")
+    cache = root / str(manifest["cache_identifier"])
+    if not cache.is_dir() or cache == Path.home() / ".cache" / "uv":
+        raise AssertionError("prepared offline cache directory is invalid")
+    artifact = root / "artifacts" / str(manifest.get("artifact_filename", ""))
+    if not artifact.is_file() or _sha256(artifact) != manifest.get("artifact_sha256"):
+        raise AssertionError("prepared offline cache artifact is stale/incompatible")
+    pyproject_hash = _sha256(PROJECT_ROOT / "pyproject.toml")
+    if manifest.get("pyproject_sha256") != pyproject_hash:
+        raise AssertionError("prepared offline cache is stale/incompatible")
+    return cache, manifest
 
 
 def _build_python(configured: str | None = None) -> Path:
@@ -74,11 +136,33 @@ def _venv_paths(venv_dir: Path) -> tuple[Path, Path]:
     return scripts / "python", scripts / "sharper"
 
 
-def _environment(venv_dir: Path) -> dict[str, str]:
+def _environment(
+    venv_dir: Path,
+    *,
+    uv_cache_dir: Path | None = None,
+) -> dict[str, str]:
     python, _ = _venv_paths(venv_dir)
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
     environment["PATH"] = f"{python.parent}{os.pathsep}{os.defpath}"
+    environment["NO_COLOR"] = "1"
+    environment["TERM"] = "dumb"
+    if uv_cache_dir is not None:
+        environment["UV_CACHE_DIR"] = str(uv_cache_dir)
+    return environment
+
+
+def _runtime_environment(venv_dir: Path, *, uv_cache_dir: Path) -> dict[str, str]:
+    """Build an isolated runtime environment for a prepared cache install."""
+    python, _ = _venv_paths(venv_dir)
+    matplotlib_config = venv_dir / ".matplotlib"
+    matplotlib_config.mkdir(exist_ok=True)
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PATH"] = f"{python.parent}{os.pathsep}{os.defpath}"
+    environment["UV_CACHE_DIR"] = str(uv_cache_dir)
+    environment["MPLCONFIGDIR"] = str(matplotlib_config)
     environment["NO_COLOR"] = "1"
     environment["TERM"] = "dumb"
     return environment
@@ -119,13 +203,21 @@ def _metadata(payload: bytes) -> object:
     return BytesParser(policy=policy.default).parsebytes(payload)
 
 
+def _requires_dist(message: object) -> list[str]:
+    return sorted(message.get_all("Requires-Dist") or [])  # type: ignore[union-attr]
+
+
+def _requires_dist_hash(requirements: list[str]) -> str:
+    return hashlib.sha256("\n".join(requirements).encode("utf-8")).hexdigest()
+
+
 def _assert_metadata(message: object) -> None:
     assert message["Name"] == "sharper"  # type: ignore[index]
     assert message["Version"] == VERSION  # type: ignore[index]
     assert message["License-Expression"] == "MIT"  # type: ignore[index]
     assert message["Requires-Python"] == ">=3.10"  # type: ignore[index]
     assert message["Description-Content-Type"] == "text/markdown"  # type: ignore[index]
-    requirements = message.get_all("Requires-Dist") or []  # type: ignore[union-attr]
+    requirements = _requires_dist(message)
     runtime = {value for value in requirements if "extra ==" not in value}
     assert runtime == {
         "matplotlib",
@@ -138,12 +230,6 @@ def _assert_metadata(message: object) -> None:
     }
     assert any(value.startswith("openpyxl; extra == 'excel'") for value in requirements)
     assert not any(value.startswith("openpyxl") for value in runtime)
-
-
-def _runtime_requirements(message: object) -> list[str]:
-    """Read the core dependency requirements from built artifact metadata."""
-    requirements = message.get_all("Requires-Dist") or []  # type: ignore[union-attr]
-    return [value for value in requirements if "extra ==" not in value]
 
 
 def _venv_snapshot(
@@ -205,62 +291,51 @@ def _create_venv(venv_dir: Path, *, cwd: Path) -> tuple[Path, Path]:
     return _assert_clean_venv(venv_dir, cwd=cwd)
 
 
-def _install_runtime_dependencies(
-    python: Path,
-    requirements: list[str],
-    *,
-    venv_dir: Path,
-    cwd: Path,
-) -> None:
-    """Install metadata-declared core dependencies into one venv from uv cache."""
-    _run(
-        [
-            str(_uv()),
-            "pip",
-            "install",
-            "--offline",
-            "--python",
-            str(python),
-            *requirements,
-        ],
-        cwd=cwd,
-        environment=_environment(venv_dir),
-        expect_empty_stderr=False,
-    )
-    _assert_clean_venv(venv_dir, cwd=cwd)
-
-
 def _assert_installed_source(
-    python: Path, *, venv_dir: Path, cwd: Path, environment: dict[str, str]
+    python: Path,
+    *,
+    runtime_venv: Path,
+    cwd: Path,
+    environment: dict[str, str],
 ) -> None:
     result = _run(
-        [str(python), "-c", "import sharper; print(sharper.__file__)"],
+        [
+            str(python),
+            "-c",
+            "import sharper; import sharper.lifecycle_monitoring as lifecycle; "
+            "print(sharper.__file__); print(lifecycle.__file__)",
+        ],
         cwd=cwd,
         environment=environment,
     )
-    source = Path(result.stdout.strip()).resolve()
-    assert "site-packages" in source.parts
-    assert venv_dir.resolve() in source.parents
-    assert PROJECT_ROOT.resolve() not in source.parents
-    assert PROJECT_ROOT.resolve() != source
-    assert PROJECT_VENV not in source.parents
+    sources = [Path(value).resolve() for value in result.stdout.splitlines()]
+    assert len(sources) == 2
+    for source in sources:
+        assert source.is_relative_to(runtime_venv.resolve())
+        assert PROJECT_ROOT.resolve() not in source.parents
+        assert PROJECT_ROOT.resolve() != source
+        assert PROJECT_VENV.resolve() not in source.parents
 
 
 def _smoke_artifact(
     *,
     python: Path,
     console: Path,
-    venv_dir: Path,
+    runtime_venv: Path,
+    uv_cache_dir: Path,
     cwd: Path,
     csv_path: Path,
     report_path: Path,
 ) -> None:
-    environment = _environment(venv_dir)
+    environment = _runtime_environment(runtime_venv, uv_cache_dir=uv_cache_dir)
     assert python.exists()
     assert console.exists()
     assert python.parent == console.parent
     _assert_installed_source(
-        python, venv_dir=venv_dir, cwd=cwd, environment=environment
+        python,
+        runtime_venv=runtime_venv,
+        cwd=cwd,
+        environment=environment,
     )
 
     public_smoke = _run(
@@ -270,12 +345,28 @@ def _smoke_artifact(
             "import sharper; "
             "assert sharper.__version__ == '0.1.0'; "
             "assert set(sharper.__all__) <= set(vars(sharper)); "
-            "assert sharper.__all__[-11:-6] == ['DataAuditRoles', "
+            "assert sharper.__all__[-18:-13] == ['DataAuditRoles', "
             "'ColumnAuditRule', 'DataAuditConfig', 'DataAuditResult', "
             "'audit_data_quality']; "
-            "assert sharper.__all__[-6:] == ['StrategyCondition', 'DecisionRule', "
-            "'DecisionConstraint', 'DecisionStrategyConfig', "
+            "assert sharper.__all__[-13:-7] == ['StrategyCondition', "
+            "'DecisionRule', 'DecisionConstraint', 'DecisionStrategyConfig', "
             "'DecisionStrategyResult', 'simulate_decision_strategy']; "
+            "assert sharper.__all__[-7:] == ['MonitoringCondition', "
+            "'EarlyWarningRule', 'WarningScenario', 'LifecycleState', "
+            "'LifecycleMonitoringConfig', 'LifecycleMonitoringResult', "
+            "'monitor_lifecycle']; "
+            "import sharper.lifecycle_monitoring as lifecycle; "
+            "import matplotlib; "
+            "from sharper import MonitoringCondition, EarlyWarningRule, "
+            "WarningScenario, "
+            "LifecycleState, LifecycleMonitoringConfig, LifecycleMonitoringResult, "
+            "monitor_lifecycle; "
+            "assert lifecycle.__file__.startswith('" + str(runtime_venv) + "'); "
+            "assert matplotlib.__file__.startswith('" + str(runtime_venv) + "'); "
+            "assert all(hasattr(sharper, name) for name in "
+            "('MonitoringCondition', 'EarlyWarningRule', 'WarningScenario', "
+            "'LifecycleState', 'LifecycleMonitoringConfig', "
+            "'LifecycleMonitoringResult', 'monitor_lifecycle')); "
             "assert not hasattr(sharper, '_ConditionNode'); "
             "assert not hasattr(sharper, '_compile_condition')",
         ],
@@ -283,6 +374,32 @@ def _smoke_artifact(
         environment=environment,
     )
     assert public_smoke.stdout == ""
+
+    task18_smoke = _run(
+        [
+            str(python),
+            "-c",
+            "from datetime import datetime; import pandas as pd; "
+            "from sharper import (EarlyWarningRule, LifecycleMonitoringConfig, "
+            "LifecycleState, MonitoringCondition, WarningScenario, monitor_lifecycle); "
+            "condition=MonitoringCondition('atomic','gt','column','feature',"
+            "'literal',0); "
+            "rule=EarlyWarningRule('rule',0,'high',condition); "
+            "state=LifecycleState('current',0,0,condition); "
+            "unknown=LifecycleState('unknown',0,1,condition); "
+            "config=LifecycleMonitoringConfig('m','v1',datetime(2025,1,2),'entity',"
+            "'observed','available',('feature',),None,None,None,False,"
+            "__import__('datetime').timedelta(days=1),__import__('datetime').timedelta(days=2),"
+            "False,None,'day',None,(WarningScenario('reference','rule_set',(rule,)),),"
+            "'reference',(('high',1),),(state,unknown),'current','unknown'); "
+            "result=monitor_lifecycle(pd.DataFrame({'entity':['e'],'observed':[datetime(2025,1,1)],"
+            "'available':[datetime(2025,1,1)],'feature':[1]}),config); "
+            "assert isinstance(result.monitoring_summary,pd.DataFrame)",
+        ],
+        cwd=cwd,
+        environment=environment,
+    )
+    assert task18_smoke.stdout == ""
 
     task16_smoke = _run(
         [
@@ -338,7 +455,12 @@ def _smoke_artifact(
 
 
 def _wheel_api_smoke(
-    python: Path, *, cwd: Path, output_dir: Path, venv_dir: Path
+    python: Path,
+    *,
+    runtime_venv: Path,
+    uv_cache_dir: Path,
+    cwd: Path,
+    output_dir: Path,
 ) -> None:
     output_dir.mkdir()
     script = """
@@ -367,14 +489,61 @@ generate_analysis_report(model, output, format="html")
 assert output.exists()
 assert output.with_name("wheel-api_assets").is_dir()
 assert list(output.with_name("wheel-api_assets").glob("*.png"))
-"""
+    """
     command = [str(python), "-c", script]
     assert command[0] == str(python)
-    _run(command, cwd=output_dir, environment=_environment(venv_dir))
+    _run(
+        command,
+        cwd=output_dir,
+        environment=_runtime_environment(runtime_venv, uv_cache_dir=uv_cache_dir),
+    )
+
+
+def _build_sdist_wheel(
+    sdist: Path,
+    *,
+    python: Path,
+    cwd: Path,
+    output_dir: Path,
+    uv_cache_dir: Path,
+) -> Path:
+    """Build a wheel from extracted sdist source without isolation or network."""
+    extracted = cwd / "sdist-wheel-source"
+    with tarfile.open(sdist) as archive:
+        if sys.version_info >= (3, 12):
+            archive.extractall(extracted, filter="data")
+        else:
+            archive.extractall(extracted)
+    source_root = next(extracted.iterdir())
+    output_dir.mkdir()
+    _run(
+        [
+            str(python),
+            "-m",
+            "build",
+            "--no-isolation",
+            "--wheel",
+            "--outdir",
+            str(output_dir),
+            str(source_root),
+        ],
+        cwd=cwd,
+        environment=_environment(PROJECT_VENV, uv_cache_dir=uv_cache_dir),
+        expect_empty_stderr=False,
+    )
+    wheels = sorted(output_dir.glob("*.whl"))
+    assert len(wheels) == 1
+    return wheels[0]
 
 
 def _run_sdist_examples(
-    sdist: Path, *, python: Path, venv_dir: Path, cwd: Path, output_dir: Path
+    sdist: Path,
+    *,
+    python: Path,
+    runtime_venv: Path,
+    uv_cache_dir: Path,
+    cwd: Path,
+    output_dir: Path,
 ) -> None:
     extracted = cwd / "sdist-source"
     with tarfile.open(sdist) as archive:
@@ -397,7 +566,11 @@ def _run_sdist_examples(
         destination.mkdir()
         command = [str(python), str(runner / script), "--output-dir", str(destination)]
         assert command[0] == str(python)
-        _run(command, cwd=cwd, environment=_environment(venv_dir))
+        _run(
+            command,
+            cwd=cwd,
+            environment=_runtime_environment(runtime_venv, uv_cache_dir=uv_cache_dir),
+        )
         assert (destination / report).exists()
         assets = destination / f"{Path(report).stem}_assets"
         assert assets.is_dir()
@@ -407,7 +580,8 @@ def _run_sdist_examples(
 
 
 def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
-    """Build both artifacts and smoke them from separate, source-free venvs."""
+    """Build artifacts and smoke isolated installs without ambient dependencies."""
+    uv_cache_dir, prepared_manifest = _prepared_cache()
     output_dir = tmp_path / "artifacts"
     output_dir.mkdir()
     build_python = _build_python()
@@ -439,12 +613,15 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         assert "sharper/data_audit.py" in names
         assert "sharper/_condition_kernel.py" in names
         assert "sharper/decision_strategy.py" in names
+        assert "sharper/lifecycle_monitoring.py" in names
         metadata_name = next(
             name for name in names if name.endswith(".dist-info/METADATA")
         )
         wheel_metadata = _metadata(archive.read(metadata_name))
         _assert_metadata(wheel_metadata)
-        runtime_requirements = _runtime_requirements(wheel_metadata)
+        assert _requires_dist_hash(_requires_dist(wheel_metadata)) == prepared_manifest[
+            "requires_dist_sha256"
+        ]
         assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
         entry_points = next(
             name for name in names if name.endswith(".dist-info/entry_points.txt")
@@ -457,6 +634,9 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         assert any(name.endswith("/src/sharper/_condition_kernel.py") for name in names)
         assert any(name.endswith("/src/sharper/decision_strategy.py") for name in names)
         assert any(
+            name.endswith("/src/sharper/lifecycle_monitoring.py") for name in names
+        )
+        assert any(
             name.endswith(
                 "/docs/decisions/task17-preloan-eligibility-strategy-contract.md"
             )
@@ -466,7 +646,11 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         assert any(name.endswith("/examples/basic_analysis.py") for name in names)
         assert any(name.endswith("/examples/baseline_modeling.py") for name in names)
         package_info = next(name for name in names if name.endswith("/PKG-INFO"))
-        _assert_metadata(_metadata(archive.extractfile(package_info).read()))  # type: ignore[union-attr]
+        sdist_metadata = _metadata(archive.extractfile(package_info).read())  # type: ignore[union-attr]
+        _assert_metadata(sdist_metadata)
+        assert _requires_dist_hash(_requires_dist(sdist_metadata)) == prepared_manifest[
+            "requires_dist_sha256"
+        ]
         pyproject = next(name for name in names if name.endswith("/pyproject.toml"))
         assert (
             'sharper = "sharper.cli:app"'
@@ -479,29 +663,35 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
     csv_path.write_text(
         "number,category\n1,one\n2,two\n3,one\n4,two\n", encoding="utf-8"
     )
-    wheel_venv = tmp_path / "wheel-venv"
-    sdist_venv = tmp_path / "sdist-venv"
-    wheel_python, wheel_console = _create_venv(wheel_venv, cwd=outside)
-    sdist_python, sdist_console = _create_venv(sdist_venv, cwd=outside)
-    assert wheel_venv != sdist_venv
-    assert wheel_python != sdist_python
-    assert wheel_console != sdist_console
-    _install_runtime_dependencies(
-        wheel_python,
-        runtime_requirements,
-        venv_dir=wheel_venv,
+    assert uv_cache_dir != Path.home() / ".cache" / "uv"
+    sdist_wheel = _build_sdist_wheel(
+        sdist,
+        python=build_python,
         cwd=outside,
+        output_dir=tmp_path / "sdist-wheel",
+        uv_cache_dir=uv_cache_dir,
     )
-    _install_runtime_dependencies(
-        sdist_python,
-        runtime_requirements,
-        venv_dir=sdist_venv,
-        cwd=outside,
-    )
+    assert sdist_wheel.name.startswith(f"sharper-{VERSION}-")
+    with zipfile.ZipFile(sdist_wheel) as archive:
+        assert "sharper/lifecycle_monitoring.py" in archive.namelist()
+        metadata_name = next(
+            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+        )
+        derived_metadata = _metadata(archive.read(metadata_name))
+        _assert_metadata(derived_metadata)
+        assert (
+            _requires_dist_hash(_requires_dist(derived_metadata))
+            == prepared_manifest["requires_dist_sha256"]
+        )
 
-    for artifact, python, venv_dir in (
-        (wheel, wheel_python, wheel_venv),
-        (sdist, sdist_python, sdist_venv),
+    wheel_runtime = tmp_path / "wheel-runtime-venv"
+    sdist_runtime = tmp_path / "sdist-runtime-venv"
+    wheel_python, wheel_console = _create_venv(wheel_runtime, cwd=outside)
+    sdist_python, sdist_console = _create_venv(sdist_runtime, cwd=outside)
+    assert wheel_python != sdist_python
+    for artifact, python, runtime in (
+        (wheel, wheel_python, wheel_runtime),
+        (sdist_wheel, sdist_python, sdist_runtime),
     ):
         install = [
             str(_uv()),
@@ -510,22 +700,20 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
             "--offline",
             "--python",
             str(python),
-            "--no-deps",
+            str(artifact),
         ]
-        install.append(str(artifact))
-        assert install[5] == str(python)
         _run(
             install,
             cwd=outside,
-            environment=_environment(venv_dir),
+            environment=_runtime_environment(runtime, uv_cache_dir=uv_cache_dir),
             expect_empty_stderr=False,
         )
-        _assert_clean_venv(venv_dir, cwd=outside)
 
     _smoke_artifact(
         python=wheel_python,
         console=wheel_console,
-        venv_dir=wheel_venv,
+        runtime_venv=wheel_runtime,
+        uv_cache_dir=uv_cache_dir,
         cwd=outside,
         csv_path=csv_path,
         report_path=outside / "wheel-cli.md",
@@ -533,47 +721,27 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
     _smoke_artifact(
         python=sdist_python,
         console=sdist_console,
-        venv_dir=sdist_venv,
+        runtime_venv=sdist_runtime,
+        uv_cache_dir=uv_cache_dir,
         cwd=outside,
         csv_path=csv_path,
         report_path=outside / "sdist-cli.md",
     )
     _wheel_api_smoke(
         wheel_python,
+        runtime_venv=wheel_runtime,
+        uv_cache_dir=uv_cache_dir,
         cwd=outside,
         output_dir=outside / "wheel-api",
-        venv_dir=wheel_venv,
     )
     _run_sdist_examples(
         sdist,
         python=sdist_python,
-        venv_dir=sdist_venv,
+        runtime_venv=sdist_runtime,
+        uv_cache_dir=uv_cache_dir,
         cwd=outside,
         output_dir=outside / "sdist-examples",
     )
-
-    excel_path = outside / "input.xlsx"
-    excel_path.write_bytes(b"base-wheel optional-dependency smoke")
-    result = _run(
-        [
-            str(wheel_python),
-            "-c",
-            "from pathlib import Path\n"
-            "from sharper import load_excel\n"
-            "try:\n"
-            "    load_excel(Path('input.xlsx'))\n"
-            "except ImportError as error:\n"
-            "    assert str(error) == "
-            "'Install sharper[excel] to read Excel files'\n"
-            "else:\n"
-            "    raise AssertionError(\n"
-            "        'base wheel unexpectedly provides Excel support'\n"
-            "    )",
-        ],
-        cwd=outside,
-        environment=_environment(wheel_venv),
-    )
-    assert result.stdout == ""
 
 
 def test_build_python_rejects_external_interpreters() -> None:

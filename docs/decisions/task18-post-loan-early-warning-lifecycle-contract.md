@@ -2,8 +2,9 @@
 
 **状态：Approved — Go。**
 
-**Contract drafting：complete。** 这是 contract-first 设计记录，不是 implementation、full
-contract review、release 或 Task 19/20 授权。Task 18 implementation 为 **Not started**。
+**Contract drafting：complete。** 这是 contract-first 设计记录和冻结合同，不是 full
+contract review、release 或 Task 19/20 授权。Task 18 implementation 为
+**Implementation complete — review Go; final validation complete**。
 
 **正式名称：** Task 18 — Post-loan Early Warning and Lifecycle Monitoring。
 
@@ -669,11 +670,73 @@ transition按config/rank/key。只生成实际存在且budget内的scope，不to
 年份或任意calendar label再分桶。二者不是同义词。Raw cohort/vintage/segment values不返回；arbitrary
 object在ordinal assignment前按exact safe scalar whitelist拒绝，pandas index不参与。
 
-`scenario_comparison`每个comparator相对reference、每个批准monitoring metric/scope一row，必须使用
-相同mature observation/entity/event support。`delta=comparator_value-reference_value`，不输出relative
-delta。Support不同不抛schema exception，而输出`not_verifiable/support_not_comparable`且value/delta
-missing；不通过intersection静默修复。Comparison仅为historical offline association；不称A/B、
-winner、best、recommended、champion或deployed。
+### AM-04 — Normalized Comparison-Side Subscope Identity Amendment
+
+本有界修正只定义`scenario_comparison`如何消费既有`monitoring_summary` source identity；它不改变
+`monitoring_summary`或`lifecycle_summary`的schema、scope、`scope_position`含义、metric、source
+summary计算、Task 15/16 ownership或D-1a/D-1b-1行为。
+
+每个comparison pair的identity是`(reference_scenario_key, comparator_scenario_key)`：它们分别选择
+`monitoring_summary.scenario_key == R`与`monitoring_summary.scenario_key == C`的source rows，且二者
+必须是不同的caller-configured scenarios。它们不参与comparison-unit equality，绝不要求相等。
+
+`scenario_comparison`只允许以下九个scenario-bearing scopes：
+
+```text
+scenario
+scenario_rule
+scenario_alert_level
+scenario_segment
+scenario_time
+scenario_cohort
+scenario_vintage
+scenario_state
+scenario_transition
+```
+
+`overall`、`segment_time`、`cohort_time`与`vintage_state`没有scenario source identity，严格不进入
+`scenario_comparison`；不得为它们构造available、unavailable或零delta row。其source summaries继续
+按本节scope matrix存在且保持不变。
+
+在pair keys已选择source scenarios后，comparison-unit alignment identity精确为
+`(metric, scope_key, scope_position, rule_key)`，其中`scope_position`是下表定义的**normalized
+comparison-side** position，而不是无条件盲拷贝source position。`finding_key`、raw labels、raw
+cohort/vintage values、raw entity、`repr`、`str`与hash均不得参与alignment。
+
+| source `scope_key` | frozen source identity / `scope_position` | normalized `(scope_key, scope_position, rule_key)` |
+|---|---|---|
+| `scenario` | `scenario_key`与source-table-local scenario config ordinal | (`scenario`, `pd.NA`, `pd.NA`) |
+| `scenario_rule` | `scenario_key`、source-table-local scenario config ordinal、`rule_key` | (`scenario_rule`, `pd.NA`, source `rule_key`) |
+| `scenario_alert_level` | alert-level ordinal，按rank降序、key升序；rank本身不作identity，因为rank可并列 | (`scenario_alert_level`, source alert-level ordinal, `pd.NA`) |
+| `scenario_segment` | config column order及category first-physical-row-order的anonymous segment ordinal | (`scenario_segment`, source anonymous segment ordinal, `pd.NA`) |
+| `scenario_time` | `time_frequency` calendar bucket ordinal | (`scenario_time`, source calendar-bucket ordinal, `pd.NA`) |
+| `scenario_cohort` | missing last、其余按first physical row的anonymous cohort ordinal | (`scenario_cohort`, source anonymous cohort ordinal, `pd.NA`) |
+| `scenario_vintage` | sorted actual `period_index`的anonymous vintage ordinal | (`scenario_vintage`, source vintage ordinal, `pd.NA`) |
+| `scenario_state` | config/rank/key的state ordinal | (`scenario_state`, source state ordinal, `pd.NA`) |
+| `scenario_transition` | frozen transition kind/direction inventory的transition ordinal，按本节config/rank/key order | (`scenario_transition`, source transition ordinal, `pd.NA`) |
+
+因此source scenario ordinal是source-table-local identity only。它**MUST NOT**跨reference与comparator
+scenarios要求相等，也不得进入comparison equality、support equality或rule alignment。相同`rule_key`
+可在R/C之间对齐；不同`rule_key`绝不对齐。除`scenario`与`scenario_rule`外，其他七个scope的
+source subordinate ordinal逐项保留，且不暴露其raw value。
+
+实现必须对每个pair先各自选择R/C source rows，再按上表normalize为`(metric, scope_key,
+scope_position, rule_key)`；只有两个normalized identities完全相同时才是一comparison unit。对
+`scenario`与`scenario_rule`，raw source `scope_position`是source-table-local scenario config ordinal，
+不得要求R/C原始position相等；normalization必须丢弃它并使双方normalized `scope_position=pd.NA`。
+对`scenario_alert_level`、`scenario_segment`、`scenario_time`、`scenario_cohort`、
+`scenario_vintage`、`scenario_state`与`scenario_transition`，normalized `scope_position`保留批准的
+source subordinate ordinal，且**MUST**在R/C source rows之间相等。不同normalized subordinate ordinal
+绝不是同一comparison unit，不得产生comparison row、比较support或计算delta。每个comparison row仍只可
+来自第11节closed metric × scope matrix中的有效source combination；不得因scope可比较而生成Cartesian
+product。
+
+每个matched normalized unit仍必须使用相同mature observation/entity/event support；support
+comparability只在完全相同的`(metric, scope_key, scope_position, rule_key)`内判断。
+`delta=comparator_value-reference_value`，不输出relative delta。Support不同不抛schema exception，
+而输出`not_verifiable/support_not_comparable`且value/delta missing；不通过intersection静默修复。
+Reference unavailable、comparator unavailable、both unavailable与reason precedence保持原合同不变。
+Comparison仅为historical offline association；不称A/B、winner、best、recommended、champion或deployed。
 
 Task 15 source alignment完整继承其frozen result：调用Task 15 validator后，验证
 prediction positions、fold validation/evaluable positions、fold id、excluded union、input counts，
@@ -766,6 +829,7 @@ status:string, reason:string, finding_key:string
 
 scenario_comparison:
 reference_scenario_key:string, comparator_scenario_key:string, metric:string,
+scope_key:string, scope_position:Int64, rule_key:string,
 reference_value:Float64, comparator_value:Float64, delta:Float64,
 numerator:Float64, denominator:Float64, support_n:int64, support_unit:string,
 status:string, reason:string, finding_key:string
@@ -779,6 +843,12 @@ provenance:
 provenance_key:string, provenance_value:string, status:string,
 reason:string, finding_key:string
 ```
+
+`scenario_comparison.scope_key`在materialized row中非missing，且vocabulary严格为第12节九个
+eligible scopes。其`scope_position`是nullable pandas`Int64`：仅`scenario`与`scenario_rule`为
+`pd.NA`；其他七个eligible scopes必须为其normalized non-scenario subordinate ordinal。其`rule_key`
+是pandas`string`：仅`scenario_rule`为non-missing source rule key，其他八个eligible scopes均为
+`pd.NA`。Typed empty `scenario_comparison`也必须保留上述完整exact column order与dtypes。
 
 `primary_scenario_key`是reference scenario；不是跨scenario自动选winner。所有pandas`string`列均
 nullable。`primary_rule_key/primary_alert_level`在无primary alert时、capture fields在uncaptured event
@@ -856,7 +926,11 @@ structured reason。不得在实现阶段新增近义值或其他pairing。
 稳定排序：observations按row_position；rule evidence按row_position/scenario config order/priority/key；
 notifications按time/entity/scenario/rule/ordinal；episodes按entity/scenario/rule/ordinal；events按
 entity/event_time/event ordinal；states按row_position；transitions按entity/transition_time/to row；summary按
-scope inventory、scope ordinal、scenario、rule、metric inventory；provenance按固定key inventory。
+scope inventory、scope ordinal、scenario、rule、metric inventory；`scenario_comparison`按reference scenario
+config order、comparator scenario config order、第11节metric inventory、第12节九scope inventory、normalized
+`scope_position`（`pd.NA`在各自scope内先）及仅`scenario_rule`的reference-side priority/key；provenance按
+固定key inventory。Source scenario ordinal只可用于scenario pair的deterministic config ordering，绝不用于
+comparison-unit equality。
 不得依赖set/hash iteration、pandas index、locale、environment timezone、current date、random或
 parallel completion。
 
@@ -959,7 +1033,7 @@ event_match_scan_operations = scenarios * (notifications_upper + unique declared
 monitoring_summary_rows = sum(actual approved monitoring scope instances * eligible M metrics)
 lifecycle_summary_rows = sum(actual approved lifecycle scope instances * eligible L metrics)
 scenario_comparison_rows = comparator_count * comparable monitoring metrics *
-                           approved comparison scope instances
+                           eligible scenario-bearing comparison scope instances
 ```
 
 `eligible_rows`在resource projection仅指通过top-level row/time cardinality检查的rows，不依赖condition
@@ -1116,13 +1190,25 @@ Final bounded contract closure: Go
 Closure P0: 0
 Closure P1: 0
 Closure P2: 0
-Task 18 implementation: Not started
+Task 18 implementation: Implementation complete — review Go; final validation complete
+AM-01: Blocked — schema amendment larger than two fields
+AM-02: Blocked — complete inventory contained non-scenario source scopes
+AM-03: Blocked — source scenario ordinal incorrectly treated as comparison equality identity
+AM-04 bounded review (initial): No-Go — AM04-BR-01 / P1 (over-broad raw-position exemption)
+AM04-BR-01: Closed
+AM-04 bounded closure: Go
+AM-04: Approved — Go
+Task 18D-1b-2: COMPLETE
+Task 18D-1: COMPLETE
+Task 18D-2a: COMPLETE
+Task 18D-2: COMPLETE — FINAL VALIDATION COMPLETE
 ```
 
 Task 18唯一一次开放式full contract review已经完成且不得再次执行；final bounded contract closure为`Go`，
-合同为`Approved — Go`。Task 18 implementation仍未开始；不stage、commit、push、tag或release，不开始
-Task19/20。只有按第18节allowlist进入implementation并完成要求的验证后，才可进入唯一一次full
-implementation review。
+合同为`Approved — Go`。AM-04是只修正comparison-side identity的bounded corrective amendment；其
+bounded closure已经为`Go`，AM04-BR-01已关闭，Task18D-1b-2和D-1已完成。Task18 implementation
+当前为`Implementation complete — review Go`，final validation已完成。不得stage、commit、push、tag或release，不开始Task19/20；不得重开CR-01--CR-08
+或开放式full contract review。
 
 Task 18 implementation只有在：合同Approved — Go；exact APIs/schemas/time/no-lookahead/kernel parity/
 episode/event/lifecycle/metrics/source alignment/privacy/resources/compatibility tests全部通过；full

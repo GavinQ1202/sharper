@@ -111,8 +111,10 @@ CI 门禁已就绪，尚未发布到 PyPI。
 
 v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
 opt-in 二分类风险验证 API 与 Task 16 opt-in data audit 已实现并通过 review；Task 17
-opt-in decision-strategy simulation 已实现并等待 implementation diff review。Tasks 18–20
-尚未实现，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
+opt-in decision-strategy simulation 已实现并通过 review；Task 18 opt-in post-loan early
+warning/lifecycle monitoring implementation 已完成，唯一一次 full implementation review 与
+bounded implementation closure 已通过，final validation 已完成。
+Tasks 19–20 尚未开始，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
 
 ## Opt-in 二分类风险验证（Task 15）
 
@@ -218,6 +220,33 @@ Conditions 使用封闭 operators 并委托 Task 16 private kernel；不存在 e
 任意代码执行入口。Ranking score 不会升级为 probability；expected loss/payoff 只消费已对齐的
 Task 15 event probability。Constraints 只测量 frozen actions，不搜索 cutoff、改写 actions 或
 选择 winner。该 API 不执行真实审批，不接入现有 workflow/report/CLI，也不表示 v0.2 已发布。
+
+## Opt-in 贷后预警与生命周期监测（Task 18）
+
+Task 18 新增 `MonitoringCondition`、`EarlyWarningRule`、`WarningScenario`、`LifecycleState`、
+`LifecycleMonitoringConfig`、`LifecycleMonitoringResult` 和 `monitor_lifecycle`。该入口只执行
+caller 冻结的 point-in-time、离线预警与生命周期 evidence，不发送通知、不执行账户或催收动作，
+也不接入现有 workflow/report/CLI：
+
+```python
+from sharper import monitor_lifecycle
+
+result = monitor_lifecycle(data, config)
+```
+
+`LifecycleMonitoringResult` 固定包含 11 张 typed tables：`observation_history`、
+`rule_evaluations`、`notifications`、`alert_episodes`、`event_matches`、`state_history`、
+`state_transitions`、`monitoring_summary`、`scenario_comparison`、`lifecycle_summary` 和
+`provenance`。`scenario_comparison` 固定 16 列，并只覆盖九个 scenario-bearing scopes：
+`scenario`、`scenario_rule`、`scenario_alert_level`、`scenario_segment`、`scenario_time`、
+`scenario_cohort`、`scenario_vintage`、`scenario_state`、`scenario_transition`；`overall`、
+`segment_time`、`cohort_time` 和 `vintage_state` 不参与比较。`scenario`/`scenario_rule` 的
+source-local scenario ordinal 不进入 equality identity，其余七个 scope 的 normalized subordinate
+ordinal 必须对齐。Summary resource gates 按 `monitoring_summary_rows` → `lifecycle_summary_rows`
+→ `scenario_comparison_rows` 执行，comparison 上限为 200,000 行。
+
+Task 18 implementation 状态为 `Implementation complete — review Go`；final validation 已完成。
+Task 18 contract 与 AM-04 均为 `Approved — Go`，package version 仍为 `0.1.0`，v0.2 尚未发布。
 
 ### Development environment
 

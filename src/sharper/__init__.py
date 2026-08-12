@@ -44,6 +44,15 @@ from sharper.features import (
     suggest_feature_derivations,
 )
 from sharper.io import load_csv, load_excel
+from sharper.lifecycle_monitoring import (
+    EarlyWarningRule,
+    LifecycleMonitoringConfig,
+    LifecycleMonitoringResult,
+    LifecycleState,
+    MonitoringCondition,
+    WarningScenario,
+    monitor_lifecycle,
+)
 from sharper.modeling import (
     RegressionTrainingResult,
     TrainingResult,
@@ -146,4 +155,11 @@ __all__ = [
     "DecisionStrategyConfig",
     "DecisionStrategyResult",
     "simulate_decision_strategy",
+    "MonitoringCondition",
+    "EarlyWarningRule",
+    "WarningScenario",
+    "LifecycleState",
+    "LifecycleMonitoringConfig",
+    "LifecycleMonitoringResult",
+    "monitor_lifecycle",
 ]

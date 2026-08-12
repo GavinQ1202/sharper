@@ -91,6 +91,64 @@ _TASK17_EXPORTS = (
     "DecisionStrategyResult",
     "simulate_decision_strategy",
 )
+_TASK18_EXPORTS = (
+    "MonitoringCondition",
+    "EarlyWarningRule",
+    "WarningScenario",
+    "LifecycleState",
+    "LifecycleMonitoringConfig",
+    "LifecycleMonitoringResult",
+    "monitor_lifecycle",
+)
+
+
+def test_task18_public_api_contract() -> None:
+    """Task 18 appends exactly its frozen seven-symbol public suffix."""
+    expected_fields = {
+        sharper.MonitoringCondition: (
+            "kind",
+            "operator",
+            "left_kind",
+            "left",
+            "right_kind",
+            "right",
+            "window",
+            "children",
+        ),
+        sharper.EarlyWarningRule: (
+            "rule_key",
+            "priority",
+            "alert_level",
+            "condition",
+            "persistence_observations",
+            "resolution_observations",
+            "cooldown",
+            "enabled",
+            "effective_from",
+            "expires_at",
+            "description_key",
+        ),
+        sharper.WarningScenario: ("scenario_key", "scenario_kind", "rules"),
+        sharper.LifecycleState: (
+            "state_key",
+            "state_rank",
+            "priority",
+            "condition",
+            "terminal",
+            "enabled",
+            "description_key",
+        ),
+    }
+    for result_type, names in expected_fields.items():
+        assert is_dataclass(result_type)
+        assert result_type.__dataclass_params__.frozen is True
+        assert tuple(field.name for field in fields(result_type)) == names
+        assert result_type.__doc__
+    assert str(inspect.signature(sharper.monitor_lifecycle)) == (
+        "(data: 'pd.DataFrame', config: 'LifecycleMonitoringConfig', *, "
+        "risk_validation: 'BinaryRiskValidationResult | None' = None, "
+        "data_audit: 'DataAuditResult | None' = None) -> 'LifecycleMonitoringResult'"
+    )
 
 
 def test_version_contract() -> None:
@@ -116,8 +174,58 @@ def test_all_contains_only_implemented_public_api() -> None:
     assert tuple(sharper.__all__[len(_V01_EXPORTS) : task15_end]) == _TASK15_EXPORTS
     task16_end = task15_end + len(_TASK16_EXPORTS)
     assert tuple(sharper.__all__[task15_end:task16_end]) == _TASK16_EXPORTS
-    assert tuple(sharper.__all__[task16_end:]) == _TASK17_EXPORTS
+    task17_end = task16_end + len(_TASK17_EXPORTS)
+    assert tuple(sharper.__all__[task16_end:task17_end]) == _TASK17_EXPORTS
+    assert tuple(sharper.__all__[task17_end:]) == _TASK18_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
+
+
+def test_task18_api_documentation_matches_frozen_inventory() -> None:
+    """Task 18 API docs retain the export, table, scope, and schema contract."""
+    api = (Path(__file__).parents[1] / "docs" / "api.md").read_text()
+    for symbol in _TASK18_EXPORTS:
+        assert f"`{symbol}`" in api
+    for table in (
+        "observation_history",
+        "rule_evaluations",
+        "notifications",
+        "alert_episodes",
+        "event_matches",
+        "state_history",
+        "state_transitions",
+        "monitoring_summary",
+        "scenario_comparison",
+        "lifecycle_summary",
+        "provenance",
+    ):
+        assert f"`{table}`" in api
+    for column in (
+        "reference_scenario_key",
+        "comparator_scenario_key",
+        "scope_key",
+        "scope_position",
+        "rule_key",
+        "finding_key",
+    ):
+        assert f"`{column}`" in api
+    for scope in (
+        "scenario",
+        "scenario_rule",
+        "scenario_alert_level",
+        "scenario_segment",
+        "scenario_time",
+        "scenario_cohort",
+        "scenario_vintage",
+        "scenario_state",
+        "scenario_transition",
+    ):
+        assert f"`{scope}`" in api
+    for scope in ("overall", "segment_time", "cohort_time", "vintage_state"):
+        assert f"`{scope}`" in api
+    assert "monitoring_summary_rows" in api
+    assert "lifecycle_summary_rows" in api
+    assert "scenario_comparison_rows" in api
+    assert "200,000" in api
 
 
 def test_task16_public_api_contract() -> None:
