@@ -100,7 +100,7 @@ schema -> pandas/numpy only
 
 ### 2.1 规格与实施计划的职责
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Tasks 19--20 contracts和implementation尚未开始。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task 19 contract已批准为`Approved — Go`，implementation未开始；Task 20 contract和implementation未开始。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
 
 ## 3. 推荐目录结构
 
@@ -790,7 +790,8 @@ v0.2 roadmap 已通过统一 review；Task 15 implementation review 已通过且
 Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成且 review 为 `Go`；Task 17
 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18唯一一次full
 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；
-Tasks 19--20 contracts 和 implementation 均未开始；v0.2 整体尚未完成或发布，当前 package
+Task 19 contract已批准为`Approved — Go`，implementation未开始；
+Task 20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
 version 仍为 `0.1.0`。其权威路线合同为
 `docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何
 Task 15--20 public symbol、签名或 dataclass 字段。
@@ -865,6 +866,59 @@ Task 16 ─┤             ├─> Task 19 ─> Task 20
   15--18 frozen results，并只新增自身的 model explanation、model comparison、
   prediction drift 和 performance stability；
 - Task 20 只编排 opt-in workflow、静态 report、CLI、文档、examples 和发行准备。
+
+### Task 19 contract stage
+
+**状态：Contract Approved — Go；Implementation Not started。**
+
+**合同：** `docs/decisions/task19-explainability-champion-challenger-governance-contract.md`。
+
+Task 19唯一一次full contract review已完成且verdict为`No-Go`；第一次bounded contract-review closure同样为
+`No-Go`。`T19-CR-04/07/08/13/14`经residual targeted repair后在bounded contract-review re-closure中取得
+`Go`；`T19-CR-01..16`全部`Closed`，Residual P0/P1/P2为`0/0/0`，contract为`Approved — Go`，
+implementation保持`Not started`。Task 19只消费Tasks 15--18 frozen owner facts，不重算其metrics、
+missingness drift、rules、actions、alerts、backtests或lifecycle tables；它另以closed structured
+declarations承载model coefficient/native/permutation attribution、prediction histograms、bounded
+performance slices和governance metadata，并拥有带fixed-seed/count-only bootstrap uncertainty的
+prediction TVD、带fixed-seed vector bootstrap uncertainty的model performance stability及
+result-only plots。它不接受或执行estimator/callable/raw feature matrix，不新增mandatory dependency，
+不进入Task 20 workflow/report/CLI/release范围。Task 20仍未开始。
+
+Task19 FIX-B后直接、单向消费四个typed predecessor-result tuples；每个candidate以本次调用内的
+0-based result position和owner-approved candidate locator绑定specific source。Model和strategy result
+各最多绑定一个candidate；同一Task18 result可通过不同scenario key绑定多个warning candidates。
+Criteria必须与pair family及closed owner-source registry一致；Task16只作diagnostic/explanation，不参与
+directional comparison。Evidence refs使用privacy-safe compound locators与owner-authoritative fingerprint，
+禁止pandas index/object identity/raw entity joins。Snapshot/alignment只有同一owner-result内部proof可为
+verified；跨result/cross-owner默认unverified，Task16 config fingerprint、equal as-of/row count/position均
+不能升级为raw snapshot proof。`T19-CR-01/06/07/11`均已`Closed`。
+
+Task19 FIX-C冻结Tasks15/17/18的92个exact directional metric keys；caller direction仅是assertion，
+不得反转registry，diagnostics/attributions/metadata保持not-directional。Numeric delta始终为challenger
+minus champion；exact higher/lower/closed-range truth tables仅在owner status、snapshot/alignment及
+per-owner normalized support identity通过后执行。Decision criteria显式记录role与promotion requirement；
+policy冻结minimum comparable count和`promotion_only/all_recommendations`人工复核模式。必须恰有一个
+approved champion，允许zero challenger，explicit pairs必须恰好覆盖challengers一次；challenger state及
+promotion completeness进入closed五值recommendation matrix。`T19-CR-02/03/09/10`已在第一次bounded closure中
+`Closed`。
+
+Task19 FIX-D冻结governance exact datetime和naive/aware discipline、38-entry registry的authoritative
+source-time mapping及`source_time <= analysis_as_of` fail-closed gate；time verification与snapshot/alignment
+保持三个独立证明维度。Task15只在frozen time mode或observed-loss as-of可证明时提供absolute time，Task16
+无result-level authoritative time且只能作time-unverified diagnostic，Task17/18分别使用唯一owner
+`evaluation_time/analysis_as_of` provenance。Structured attribution/profile/performance declarations显式提供
+evidence time，metadata time为not-applicable。
+
+FIX-D同时冻结exact-type tagged canonical JSON encoder、11个semantic fingerprints、38/92/5三个registry
+version identities、35-row privacy-safe provenance、78-key exact ValueError registry、5 statuses/15 reasons及
+十张table各自ordinal finding-key family。禁止repr/str/Python-hash fallback、current clock、raw payload和
+invalid-source-to-status降级。`T19-CR-04/12/13`均已`Closed`。
+
+Task19 FIX-E冻结十表exact row units/columns/dtypes/nullability/identities、17个reachable caller-variable resource
+gates、9个fixed cardinality/projection invariants及完整normative implementation test matrix；pair/comparison/
+evaluation/recommendation/summary maxima分别为15/960/960/15/16，provenance固定35。SPEC/PLAN中所有Task19
+状态已同步；`T19-CR-08/14/15/16`均已`Closed`。Task19 contract为`Approved — Go`，implementation仍为
+`Not started`；合同checkpoint完成后的唯一下一阶段为`TASK19 IMPLEMENTATION STAGE`。
 
 Tasks 17 和 18 并列且不相互依赖；Task 18 仅在使用模型分数时可选消费 Task 15。
 Task 19 不重算 Tasks 15--18 的指标、missingness drift、规则、动作、alerts、backtest
