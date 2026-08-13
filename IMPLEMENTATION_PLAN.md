@@ -6,7 +6,7 @@ Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通�
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18 contract已批准为`Approved — Go`，
-final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 contract已批准为`Approved — Go`，implementation未开始；Task20 contract和implementation未开始；
+final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`In progress`；Task20 contract和implementation未开始；
 v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
 v0.1 保持以下完整轻量闭环：
 
@@ -1293,7 +1293,7 @@ v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完�
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
 且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 contract已批准为`Approved — Go`且implementation未开始；Task20 contract和implementation未开始。不得跨 Task 提前实现。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`In progress`；Task20 contract和implementation未开始。不得跨 Task 提前实现。
 
 **目标**
 
@@ -1338,7 +1338,7 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
 已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 contract已批准为`Approved — Go`且implementation未开始；Task20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`In progress`；Task20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
 version 仍为 `0.1.0`。
 
 **目标**
@@ -1385,7 +1385,7 @@ implementation fixes已完成，第一次bounded implementation closure为`No-Go
 implementation fixes已完成，final bounded implementation closure为`Go`，P0/P1/P2均为`0`。
 Task 17 implementation complete — review Go，后续不得再次执行开放式full implementation review；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 contract已批准为`Approved — Go`且implementation未开始；Task20 contract和implementation未开始；v0.2整体尚未完成或发布，当前package version
+`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`In progress`；Task20 contract和implementation未开始；v0.2整体尚未完成或发布，当前package version
 仍为`0.1.0`。
 
 **目标**
@@ -1466,14 +1466,18 @@ evaluator；alert/history result 与 Task 17 action result 分离。
 
 ### Task 19 — Explainability, Champion/Challenger and Governance
 
-**状态：Contract Approved — Go；Implementation Not started。**
+**状态：Contract Approved — Go v2；Implementation in progress。**
 
 **合同：** `docs/decisions/task19-explainability-champion-challenger-governance-contract.md`。
 
 Task 19唯一一次full contract review已完成且verdict为`No-Go`；第一次bounded contract-review closure同样为
 `No-Go`。`T19-CR-04/07/08/13/14`经residual targeted repair后在bounded contract-review re-closure中取得
-`Go`；`T19-CR-01..16`全部`Closed`，Residual P0/P1/P2为`0/0/0`，contract为`Approved — Go`，
-implementation保持`Not started`。不得执行第二次full contract review，Task 20不得提前。
+`Go`；原approved checkpoint的`T19-CR-01..16`历史状态保持`Closed`。T19-CR-13 blocker adjudication确认
+`invalid_owner_result`与`privacy_unsafe_value`不可达；targeted post-approval amendment已应用，bounded amendment closure为`Go`并已`Closed`，
+当前amended contract为`Approved — Go v2`，implementation为`In progress`。不得执行第二次full contract review，Task 20不得提前。
+
+恢复 implementation 后的 final acceptance residual closure 仅保留 A/B/E/H/K/L；其中 H 为 `76/76 executable
+error mapping`。C/D/F/G/I/J/M/N/O 保持 `Closed`，16/16 roadmap traceability 仍待该 implementation closure 完成。
 
 FIX-B source architecture保持冻结：Task19使用四个bounded typed owner-result tuples；candidate通过
 source result position与owner-approved locator唯一绑定，criterion必须匹配pair family和38-entry closed
@@ -1492,15 +1496,15 @@ FIX-D保持冻结并完成residual repair：exact governance clock和38-entry au
 comparison/resource/math前执行future-evidence fail-closed gate，time proof与snapshot/alignment独立；Task15
 仅frozen time/observed-loss as-of可verified，Task16只允许time-unverified diagnostic，Task17/18分别消费
 唯一evaluation_time/analysis_as_of。Exact tagged canonical encoder冻结11 fingerprints、38/92/5 registry
-identities和35-row safe provenance；public failure冻结78 keys、5 statuses/15 reasons和十table ordinal finding
-families。`T19-CR-04/12/13`均已`Closed`。
+identities和35-row safe provenance；public failure冻结76 keys、5 statuses/15 reasons和十table ordinal finding
+families。`T19-CR-04/12/13`历史状态保持`Closed`；T19-CR-13 amendment与bounded closure均已`Closed`。
 
 FIX-E保持冻结并完成residual repair：exact ten-table public schema registry逐列冻结row unit、dtype、nullability、
 unique identity、ordering和typed-empty；17个caller-variable gates全部reachable，9个fixed invariants分离，
 pair/comparison/evaluation/recommendation/summary maxima为15/960/960/15/16且provenance固定35。Normative test
 matrix覆盖12 public symbols、十schemas、16 roadmap capabilities、CR-01..14、privacy/security、plots、owner
-regressions和distribution。`T19-CR-08/14/15/16`均已`Closed`。Task19 contract为`Approved — Go`，
-implementation仍为`Not started`；合同checkpoint完成后的唯一下一阶段为`TASK19 IMPLEMENTATION STAGE`。
+regressions和distribution。`T19-CR-08/14/15/16`均已`Closed`。Task19 amended contract为`Approved — Go v2`，implementation为
+`In progress`；下一阶段唯一为`TASK19 IMPLEMENTATION — FINAL ACCEPTANCE RESIDUAL CLOSURE FROM V2 CONTRACT BASELINE`。
 
 **目标**
 

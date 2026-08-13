@@ -1,15 +1,21 @@
 # Task 19 — Explainability, Champion/Challenger and Governance 精确合同
 
-**Contract 状态：Approved — Go。**
+**Contract 状态：Approved — Go（amended v2）。**
 
-**Implementation 状态：Not started。**
+**Implementation 状态：In progress。**
 
 本记录已完成唯一一次 full contract review，verdict为`No-Go`；第一次bounded contract-review closure
 同样为`No-Go`，其中`T19-CR-01/02/03/05/06/09/10/11/12/15/16`已`Closed`，残余
 `T19-CR-04/07/08/13/14`经targeted repair后在bounded contract-review re-closure中取得`Go`。
-`T19-CR-01..16`现全部`Closed`，Residual P0/P1/P2为`0/0/0`，合同正式为`Approved — Go`；
-implementation仍为`Not started`。Task 18 保持
+`T19-CR-01..16`在原approved checkpoint均为`Closed`，Residual P0/P1/P2为`0/0/0`。
+随后post-approval implementation-blocker adjudication确认`T19-CR-13`中两个error keys在approved semantics下不可达；
+本次targeted amendment已应用，bounded amendment closure为`Go`并已`Closed`。`T19-CR-13`的历史closure保持`Closed`，
+其post-approval blocker与amendment现均已`Closed`；`T19-CR-15`保持`Closed`，仅直接acceptance wording随本amendment机械同步。Task 18 保持
 `Approved — Go`、`Implementation complete — review Go`；本合同不重开 Tasks 15--18。
+
+Historical note: the immutable `442fdc0...` approved checkpoint froze the original v1/78-key inventory; the current
+amended v2 contract intentionally removes the two unreachable keys and freezes 76 executable keys.该历史checkpoint
+保持immutable，后续implementation以新的v2 checkpoint为baseline。
 
 **正式名称：** Task 19 — Explainability, Champion/Challenger and Governance。
 
@@ -351,6 +357,13 @@ missing/duplicate/extra/reversed/challenger-challenger pair及challenger==champi
 all-pairs、global-best或key guessing；multiple challengers独立评估。Candidate family 封闭为 `model`（Task 15）、
 `strategy`（Task 17）、`warning_scenario`（Task 18）；跨 family 禁止比较，Task 16 仅为
 audit evidence source。
+
+Pair-level semantic validity is a separate closed predicate from pair coverage: when the pair container,
+candidate inventory, champion, pair uniqueness, and exact challenger coverage are all valid, a pair whose two
+candidate families differ is `invalid_pair`. Missing, extra, reversed, self, duplicate, or otherwise incomplete
+coverage remains `invalid_pair_coverage` or `duplicate_pair` according to the earlier checks; no pair-level
+catch-all is permitted. A normative representative is one valid model champion, one valid strategy challenger,
+and exactly one complete pair: the first failure is `model governance: invalid_pair`.
 
 Challenger state matrix封闭为：`candidate/under_review/approved`均可进入evidence evaluation；其中
 `approved`只表示caller-declared current governance state，不使其成为champion，也不自动promotion。
@@ -697,6 +710,39 @@ enclosing semantic declaration identity判定，而不是由resolved owner row�
 `unsupported_source`；wrong candidate、wrong result position或跨candidate source
 binding使用`invalid_source_binding`，均不物化unavailable row。`source_key`、pandas index和object identity仍不存在
 且不得作为carrier/link identity。
+
+The normative duplicate representative is two separately declared, structurally valid, semantic-identical
+Task16 governance-wide diagnostic refs in `GovernancePolicy.evidence_refs`, with all earlier policy, owner,
+locator, and fingerprint checks valid. The first failure is `model governance: duplicate_evidence_ref`.
+
+### 7.3.1 Exhaustive owner-validation error partition
+
+Owner validation uses this closed partition; no generic `invalid_owner_result`, unexpected-owner-result, or other
+catch-all exists:
+
+| first invalid predicate | exact error key |
+|---|---|
+| wrong owner collection/container type or wrong exact owner tuple element result type | `invalid_owner_result_container` |
+| required owner table/schema structure or column set/order mismatch | `invalid_owner_schema` |
+| schema is correct but a frozen owner column dtype is wrong | `invalid_owner_dtype` |
+| owner row status token is outside that owner table's closed vocabulary | `invalid_owner_status` |
+| owner reason token, or status/reason combination, violates that owner contract matrix | `invalid_owner_reason` |
+| owner cell/value domain violates the selected owner table's frozen value rule | `invalid_owner_value` |
+| duplicate semantic owner source declaration | `duplicate_owner_source` |
+| candidate/source binding, locator position, or candidate identity does not match | `invalid_source_binding` |
+| fingerprint field is not the approved lowercase 64-character SHA-256 hexadecimal form | `invalid_source_fingerprint` |
+| fingerprint has the approved form but differs from the authoritative digest | `source_fingerprint_mismatch` |
+
+These predicates are checked in the listed owner-phase order after structural validation and before time,
+resource, math, or materialization phases. The six currently missing production branches that remain required
+after this amendment are `invalid_pair`, `duplicate_evidence_ref`, `invalid_owner_dtype`, `invalid_owner_status`,
+`invalid_owner_reason`, and `invalid_source_fingerprint`; each requires a direct executable representative.
+For the dtype representative, Task17 `rule_summary.metric_value` is the frozen `Float64` field: with the
+approved column set/order intact but that field materialized with an incompatible dtype, the first error is
+`invalid_owner_dtype`, not `invalid_owner_schema` or `invalid_owner_value`. For status/reason representatives,
+an otherwise valid owner row with a token outside its closed vocabulary (for example, test value `bogus`) is
+`invalid_owner_status`, while a legal status with an unsupported reason or forbidden status/reason combination is
+`invalid_owner_reason`; `bogus` is a representative test value, not vocabulary.
 
 ### 7.4 Explanation/structured-source binding matrix
 
@@ -1054,7 +1100,7 @@ ordered Task15→16→17→18 and then owner tuple position；没有dynamic prov
 declaration的`verified/unverified/not_applicable`，按flattened ref、attributions、profiles、performance order。
 Provenance不得包含raw candidate label、entity、segment/cohort/vintage label、
 feature value、target/vector、owner finding value、credential、path、repr或完整payload。Package version固定
-记录`0.1.0`，contract version记录`task19-contract-targeted-fixed-v1`；不声称v0.2 released。Current clock、generated
+记录`0.1.0`，contract version记录`task19-contract-targeted-fixed-v2`；不声称v0.2 released。Current clock、generated
 at、environment和plot不参与任何fingerprint/provenance；plot只读existing result。
 
 ### 9A.4 FIX-D canonical/provenance direct-test obligations
@@ -1203,11 +1249,11 @@ no row drop/coercion/object fallback。Schema tests must independently cover emp
 
 ## 11. Status、errors、finding keys、precedence
 
-### 11.1 Exact public error contract（78 keys）
+### 11.1 Exact public error contract（76 keys）
 
 所有public validation failure仅抛built-in `ValueError`，`str(error)` exact为
 `model governance: <error_key>`；没有prefix variant、动态value、repr、raw key或exception chaining text。
-Closed 78-key inventory如下；其排列只登记identity/count，不定义跨phase precedence；唯一precedence见§11.2：
+Closed 76-key inventory如下；其排列只登记identity/count，不定义跨phase precedence；唯一precedence见§11.2：
 
 ```text
 invalid_policy_type, invalid_governance_key, invalid_governance_version,
@@ -1221,13 +1267,13 @@ duplicate_candidate, invalid_champion, invalid_pair, invalid_pair_coverage,
 duplicate_pair, invalid_criterion, duplicate_criterion, unsupported_criterion,
 invalid_metadata, invalid_evidence_ref, duplicate_evidence_ref,
 invalid_explanation, invalid_attribution, invalid_prediction_profile,
-invalid_performance_evidence, invalid_owner_result, duplicate_owner_source,
+invalid_performance_evidence, duplicate_owner_source,
 invalid_source_binding, unsupported_source, invalid_source_locator,
 source_not_found, source_not_unique, invalid_owner_schema, invalid_owner_dtype,
 invalid_owner_status, invalid_owner_reason, invalid_owner_value,
 invalid_source_fingerprint, source_fingerprint_mismatch,
 authoritative_time_missing, authoritative_time_mismatch, future_evidence_time,
-invalid_canonical_value, privacy_unsafe_value,
+invalid_canonical_value,
 resource_candidates, resource_comparison_pairs, resource_criteria,
 resource_explanations, resource_model_attribution_rows,
 resource_attribution_permutation_repeats, resource_prediction_profile_rows,
@@ -1243,9 +1289,15 @@ resource_decision_strategy_results, resource_lifecycle_monitoring_results,
 resource_evidence_refs
 ```
 
-上表为78 keys（52 semantic + 26 resource）。
+上表为76 keys（50 semantic + 26 resource）。
 每条failure只能映射到该closed inventory；具体字段问题归入对应aggregate semantic key，禁止新suffix。
 Invalid ref/owner/schema/fingerprint/time/value永远raise，不物化成unavailable row。
+
+Owner validation is exhaustive: `invalid_owner_result` is intentionally not a public error key. Privacy safety is
+also not a generic caller-time classifier: `privacy_unsafe_value` is intentionally not a public error key. Invalid
+candidate, metadata, evidence-ref, criterion, explanation, attribution, prediction-profile, or performance values
+must use their field-specific closed error; raw/private values remain prohibited from output tables, errors, keys,
+provenance, and plots.
 
 ### 11.2 Single normative global validation phase order and whole-input safety
 
@@ -1275,7 +1327,7 @@ unpaired、unreferenced元素也不能逃过。恶意protocol callbacks在type r
 14. recommendation aggregation；
 15. ten-table public result materialization。
 
-此顺序同时是78-key error registry的唯一multi-invalid precedence authority；其他章节只能引用，不得复制或
+此顺序同时是76-key error registry的唯一multi-invalid precedence authority；其他章节只能引用，不得复制或
 改写第二套phase list。Tuple/container length可在structural safety中读取并记录overage，但exact-tuple elements只做
 一次linear type/privacy pass；不得分配Cartesian/projection/public rows，其observable `resource_*` error仍只在phase 11
 发生，不能伪装成phase 1/2 structural error。Phase 6--8只读取authoritative result/row time与必要owner
@@ -1362,7 +1414,7 @@ entity/group/segment/cohort/vintage/time value、target、repr或malicious strin
 
 ### 11.6 FIX-D error/status/finding direct-test obligations
 
-Direct tests要求78 errors逐项映射且无unknown key（resource key的reachability见第12节）；
+Direct tests要求76 errors逐项映射且无unknown key（resource key的reachability见第12节）；
 multi-invalid precedence明确绑定本节唯一global order，并直接覆盖future+resource、authoritative-time-missing+
 resource、authoritative-time-mismatch+resource三个首错sentinel；raw-secret absence；15 reasons
 在有semantic path处reachable且无unknown；十表status/reason/null scan；invalid source raises；十family exact regex、
@@ -1499,9 +1551,9 @@ The word **requires** below is mandatory; representative smoke tests do not subs
 | CR-10 state | zero candidate/champion/challenger, multiple champion, pair coverage/duplicate/reversed/extra/self, every state, rejected/retired veto, approved challenger, two review modes, no mutation/auto promotion |
 | CR-11 proof | intra-result verified, cross-result unverified, equal as-of and Task16 digest not proof, position-only/raw-entity alignment forbidden, not-applicable vs unverified |
 | CR-12 fingerprint | all11 fingerprints, 35 provenance rows, scalar/datetime golden values, mapping order, nonfinite/malicious rejection, copy determinism/sensitivity, registry identities, owner limitations/privacy |
-| CR-13 vocabulary | all78 keys mechanically mapped with direct representative branches, all15 semantically reachable reasons, ten-table status/reason scan, ten finding regex/uniqueness/determinism/privacy/namespace separation |
+| CR-13 vocabulary | all76 approved keys mechanically mapped with direct representative executable branches, all15 semantically reachable reasons, ten-table status/reason scan, ten finding regex/uniqueness/determinism/privacy/namespace separation |
 | CR-14 resources | all17 variable gates exact max/max+1 first-fail plus precedence sentinels; all9 fixed invariants; no preflight Cartesian and bounded lookup counter |
-| Security/privacy | scan all ten tables, errors, reasons, keys, provenance and plot text for raw entity/segment/cohort/vintage/feature value/target/model repr/malicious secret |
+| Security/privacy | scan all ten tables, errors, reasons, keys, provenance and plot text for raw entity/segment/cohort/vintage/feature value/target/model repr/malicious secret; this validates non-disclosure invariants, not a `privacy_unsafe_value` error branch |
 | Malicious scalar | `repr,str,hash,bool,int,float,iter,eq,lt,array` objects in selectors, sources and structured declarations; callbacks remain zero before rejection |
 | Immutability/determinism | policy/nested tuples/owner DataFrames/structured tuples unchanged; repeated/deep-copy tables, order, keys, fingerprints, recommendations equal across clock/env/hash seed |
 | Result-only plots | all five kinds consume result only, exact Figure, no evaluator/owner/recompute, closed empty behavior, safe labels/order/lifecycle, no dependency/global style/save |
@@ -1521,25 +1573,36 @@ required byAGENTS.md；this contract-only residual targeted repair runs none of 
 
 Task 19唯一一次full contract review为`No-Go`；第一次bounded contract-review closure同样为`No-Go`。
 该closure关闭11项，只留下`T19-CR-04/07/08/13/14`；随后完成residual targeted repair，且bounded
-contract-review re-closure为`Go`。未执行第二次full contract review，所有16项finding现已关闭。
+contract-review re-closure为`Go`。原approved checkpoint的16项finding均保持其历史状态，未执行第二次
+full contract review。其后post-approval implementation-blocker adjudication确认`T19-CR-13`中
+`invalid_owner_result`与`privacy_unsafe_value`不可达；本次targeted amendment删除这两个key并将当前
+executable vocabulary收紧为76项；bounded approved-contract amendment closure随后取得`Go`，因此当前amended
+contract正式为`Approved — Go`。
 
 FIX-A关闭`T19-CR-05`；FIX-B关闭`T19-CR-01/06/07/11`；FIX-C关闭`T19-CR-02/03/09/10`；
-FIX-D关闭`T19-CR-04/12/13`；FIX-E关闭`T19-CR-08/14/15/16`。
+FIX-D关闭`T19-CR-04/12/13`；FIX-E关闭`T19-CR-08/14/15/16`。`T19-CR-13`历史closure保持`Closed`；
+Post-Approval T19-CR-13 Blocker已确认并关闭，Targeted Approved-Contract Amendment为`Applied`；
+Bounded Approved-Contract Amendment Closure为`Go`并已`Closed`。`T19-CR-15`保持`Closed`，仅其direct
+acceptance wording按本amendment改为76/76。
 
 ```text
-Task 19 contract: Approved — Go
-Task 19 implementation: Not started
+Task 19 original approved contract checkpoint: Approved — Go v1 / 78 keys (442fdc0 immutable)
+Task 19 amended contract: Approved — Go v2 / 76 keys
+Task 19 implementation: In progress
 Unique Full Contract Review: Completed once — No-Go
 First Bounded Contract-Review Closure: No-Go
 Residual Targeted Contract Repair: Completed for T19-CR-04/07/08/13/14
-Bounded Contract-Review Re-Closure: Go
+Bounded Contract-Review Re-Closure: Go (original vocabulary)
+Post-Approval T19-CR-13 Blocker: Confirmed — Closed
+Targeted Approved-Contract Amendment: Applied — Closed
+Bounded Approved-Contract Amendment Closure: Go — Closed
 T19-CR-01..16: Closed
 Residual P0/P1/P2: 0/0/0
-Task 19: Ready for implementation stage
+Task 19: Ready to resume Implementation Stage from amended v2 checkpoint
 Task 18: unchanged and closed
 Task 20 contract: Not started
 Task 20 implementation: Not started
 ```
 
-合同阶段已完成；下一阶段仅为 **TASK19 IMPLEMENTATION STAGE**，必须从approved contract checkpoint开始。
+implementation尚未完成；下一阶段唯一为 **TASK19 IMPLEMENTATION — FINAL ACCEPTANCE RESIDUAL CLOSURE FROM V2 CONTRACT BASELINE**。
 不得第二次full contract review、寻找`T19-CR-17`、扩大scope或提前开始Task 20。

@@ -100,7 +100,7 @@ schema -> pandas/numpy only
 
 ### 2.1 规格与实施计划的职责
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task 19 contract已批准为`Approved — Go`，implementation未开始；Task 20 contract和implementation未开始。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task 19 original contract checkpoint为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`In progress`；Task 20 contract和implementation未开始。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
 
 ## 3. 推荐目录结构
 
@@ -790,7 +790,7 @@ v0.2 roadmap 已通过统一 review；Task 15 implementation review 已通过且
 Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成且 review 为 `Go`；Task 17
 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18唯一一次full
 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；
-Task 19 contract已批准为`Approved — Go`，implementation未开始；
+Task 19 original contract checkpoint已批准为`Approved — Go`；当前amended contract为`Approved — Go v2`，implementation为`In progress`；
 Task 20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
 version 仍为 `0.1.0`。其权威路线合同为
 `docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何
@@ -869,14 +869,15 @@ Task 16 ─┤             ├─> Task 19 ─> Task 20
 
 ### Task 19 contract stage
 
-**状态：Contract Approved — Go；Implementation Not started。**
+**状态：Contract Approved — Go v2；Implementation in progress。**
 
 **合同：** `docs/decisions/task19-explainability-champion-challenger-governance-contract.md`。
 
 Task 19唯一一次full contract review已完成且verdict为`No-Go`；第一次bounded contract-review closure同样为
 `No-Go`。`T19-CR-04/07/08/13/14`经residual targeted repair后在bounded contract-review re-closure中取得
-`Go`；`T19-CR-01..16`全部`Closed`，Residual P0/P1/P2为`0/0/0`，contract为`Approved — Go`，
-implementation保持`Not started`。Task 19只消费Tasks 15--18 frozen owner facts，不重算其metrics、
+`Go`；原approved checkpoint的`T19-CR-01..16`历史状态保持`Closed`。随后T19-CR-13 blocker adjudication确认
+`invalid_owner_result`与`privacy_unsafe_value`不可达；targeted post-approval amendment已应用，bounded amendment closure为`Go`并已`Closed`，
+当前amended contract为`Approved — Go v2`，implementation为`In progress`。Task 19只消费Tasks 15--18 frozen owner facts，不重算其metrics、
 missingness drift、rules、actions、alerts、backtests或lifecycle tables；它另以closed structured
 declarations承载model coefficient/native/permutation attribution、prediction histograms、bounded
 performance slices和governance metadata，并拥有带fixed-seed/count-only bootstrap uncertainty的
@@ -910,15 +911,15 @@ source-time mapping及`source_time <= analysis_as_of` fail-closed gate；time ve
 evidence time，metadata time为not-applicable。
 
 FIX-D同时冻结exact-type tagged canonical JSON encoder、11个semantic fingerprints、38/92/5三个registry
-version identities、35-row privacy-safe provenance、78-key exact ValueError registry、5 statuses/15 reasons及
+version identities、35-row privacy-safe provenance、76-key exact ValueError registry、5 statuses/15 reasons及
 十张table各自ordinal finding-key family。禁止repr/str/Python-hash fallback、current clock、raw payload和
 invalid-source-to-status降级。`T19-CR-04/12/13`均已`Closed`。
 
 Task19 FIX-E冻结十表exact row units/columns/dtypes/nullability/identities、17个reachable caller-variable resource
 gates、9个fixed cardinality/projection invariants及完整normative implementation test matrix；pair/comparison/
 evaluation/recommendation/summary maxima分别为15/960/960/15/16，provenance固定35。SPEC/PLAN中所有Task19
-状态已同步；`T19-CR-08/14/15/16`均已`Closed`。Task19 contract为`Approved — Go`，implementation仍为
-`Not started`；合同checkpoint完成后的唯一下一阶段为`TASK19 IMPLEMENTATION STAGE`。
+状态已同步；`T19-CR-08/14/15/16`均已`Closed`。Task19 amended contract为`Approved — Go v2`，implementation为
+`In progress`；下一阶段唯一为`TASK19 IMPLEMENTATION — FINAL ACCEPTANCE RESIDUAL CLOSURE FROM V2 CONTRACT BASELINE`。
 
 Tasks 17 和 18 并列且不相互依赖；Task 18 仅在使用模型分数时可选消费 Task 15。
 Task 19 不重算 Tasks 15--18 的指标、missingness drift、规则、动作、alerts、backtest
