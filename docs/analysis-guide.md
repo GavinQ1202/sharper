@@ -19,3 +19,35 @@ does not provide a dashboard, server, or interactive HTML report in v0.1.
 The workflow cannot eliminate entity/group leakage or make random holdout safe
 for temporal data. Review the recorded warnings and limitations, and see
 [Leakage safeguards](leakage.md) before interpreting a baseline model.
+
+## Opt-in v0.2 integration
+
+Task 20 adds a separate typed integration path. It does not change the default
+`run_analysis` result, the v0.1 report, or the `sharper analyze` command.
+
+The three primary paths are independently enabled:
+
+- score validation, using the explicit Task 15 request and positive-label/
+  score provenance;
+- pre-loan eligibility, using the caller-frozen Task 17 strategy config;
+- post-loan warning/lifecycle, using the caller-frozen Task 18 monitoring config.
+
+Task 16 audit is an optional diagnostic path attached to the run. Task 19
+governance is an optional final step that consumes the enabled upstream owner
+results; neither is a fourth or fifth primary business path.
+
+For enabled paths, the fixed owner order is:
+
+```text
+audit → score validation → pre-loan → post-loan → governance
+```
+
+Each enabled owner is called exactly once. Task 20 does not retry an owner
+failure, and the reporting layer consumes stored result tables and Figures; it
+does not refit, predict, evaluate, execute rules, reconstruct alerts, or
+recompute domain statistics.
+
+`V02WorkflowResult` stores the typed owner results, fixed path status, call
+trace, warnings, and limitations. It does not retain the primary raw DataFrame
+or the optional audit reference. The v0.2 workflow is opt-in and the current
+package remains `0.1.0`; v0.2 has not been released.

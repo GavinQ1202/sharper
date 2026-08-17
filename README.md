@@ -114,7 +114,29 @@ opt-in 二分类风险验证 API 与 Task 16 opt-in data audit 已实现并通�
 opt-in decision-strategy simulation 已实现并通过 review；Task 18 opt-in post-loan early
 warning/lifecycle monitoring implementation 已完成，唯一一次 full implementation review 与
 bounded implementation closure 已通过，final validation 已完成。
-Tasks 19–20 尚未开始，v0.2 整体也尚未发布。当前 package version 仍为 `0.1.0`。
+Task 19 的 explainability/governance API 已完成；Task 20 的 opt-in integration workflow、
+closed JSON carriers、静态 Markdown/HTML report 和 `v02-run` CLI path 已实现。Task 20
+的 final public-surface、版本、examples、distribution 和 CI readiness gates 仍需完成，
+因此 v0.2 整体尚未发布。当前 package version 仍为 `0.1.0`。
+
+## Opt-in v0.2 integration (Task 20)
+
+Task 20 为三条相互独立的 primary path 提供统一的 opt-in 编排：score validation、
+pre-loan eligibility 和 post-loan warning/lifecycle。Task 16 audit 是可选 diagnostic
+path，Task 19 governance 是可选 final step。workflow 只调用已冻结的 Tasks 15–19 public
+APIs；enabled owner each runs once, and reporting consumes stored results without
+recomputing domain analysis.
+
+Task 17 policy 和 Task 18 warning 配置可通过两个 versioned closed JSON carriers 提供：
+`task20.policy.v1` 和 `task20.warning.v1`。Task 20 报告只支持静态 Markdown 或 HTML，
+CLI 入口为 `sharper v02-run`。JSON 不接受 YAML/TOML、Python 配置、函数、脚本、模板、
+include、URL、`$ref`、环境变量或路径展开。
+
+这是 v0.2 的 approved integration surface，仍保持 v0.1 的 `run_analysis`、
+`generate_analysis_report`、`sharper analyze` 和既有 exports 兼容。v0.2 release target
+为 `0.2.0`，当前仍是 `0.1.0`，尚未发布，也不表示 production 或 deployment ready。
+参见 [v0.2 integration guide](docs/v02-integration-guide.md) 和
+[release readiness](docs/release-readiness.md)。
 
 ## Opt-in 二分类风险验证（Task 15）
 

@@ -664,3 +664,153 @@ facts and bounded precomputed attribution/profile/performance declarations; it
 does not inspect or execute a model, automatically promote or deploy a candidate,
 or make causal, legal-fairness, or adverse-action claims. Its implementation is
 `Implemented — Post-Review Closure Complete`; package version remains `0.1.0` and v0.2 is not released.
+
+## Task 20 v0.2 integration surface
+
+Task 20 adds exactly nine approved integration symbols. They describe the
+final opt-in v0.2 public surface; the current package remains `0.1.0`, and
+these nine names are not yet active root exports until the final public-surface
+gate.
+
+```text
+V02ScoreValidationRequest
+V02AuditRequest
+V02PreLoanRequest
+V02PostLoanRequest
+V02GovernanceRequest
+V02WorkflowRequest
+V02WorkflowResult
+run_v02_workflow
+generate_v02_report
+```
+
+The exact frozen dataclass fields, order, annotations, and defaults are:
+
+```python
+@dataclass(frozen=True)
+class V02ScoreValidationRequest:
+    target: str
+    config: BinaryRiskValidationConfig
+    positive_label: str | int | bool | np.generic | None = None
+    estimator: ClassifierMixin | None = None
+    external_predictions: ExternalRiskPredictions | None = None
+    features: tuple[str, ...] | None = None
+    exclude_columns: tuple[str, ...] = ()
+
+@dataclass(frozen=True)
+class V02AuditRequest:
+    reference: pd.DataFrame | None = None
+    roles: DataAuditRoles | None = None
+    config: DataAuditConfig | None = None
+
+@dataclass(frozen=True)
+class V02PreLoanRequest:
+    config: DecisionStrategyConfig
+
+@dataclass(frozen=True)
+class V02PostLoanRequest:
+    config: LifecycleMonitoringConfig
+
+@dataclass(frozen=True)
+class V02GovernanceRequest:
+    policy: GovernancePolicy
+    model_attributions: tuple[GovernanceAttributionEvidence, ...] = ()
+    prediction_profiles: tuple[GovernancePredictionProfile, ...] = ()
+    performance_evidence: tuple[GovernancePerformanceEvidence, ...] = ()
+
+@dataclass(frozen=True)
+class V02WorkflowRequest:
+    data: pd.DataFrame
+    score_validation: V02ScoreValidationRequest | None = None
+    audit: V02AuditRequest | None = None
+    preloan: V02PreLoanRequest | None = None
+    postloan: V02PostLoanRequest | None = None
+    governance: V02GovernanceRequest | None = None
+
+@dataclass(frozen=True)
+class V02WorkflowResult:
+    contract_version: Literal["task20-integration-v1"]
+    enabled_paths: tuple[str, ...]
+    path_status: pd.DataFrame
+    call_trace: tuple[str, ...]
+    score_validation: BinaryRiskValidationResult | None
+    data_audit: DataAuditResult | None
+    preloan: DecisionStrategyResult | None
+    postloan: LifecycleMonitoringResult | None
+    governance: GovernanceResult | None
+    warnings: tuple[str, ...]
+    limitations: tuple[str, ...]
+```
+
+The exact function signatures are:
+
+```python
+def run_v02_workflow(request: V02WorkflowRequest) -> V02WorkflowResult: ...
+
+def generate_v02_report(
+    result: V02WorkflowResult,
+    output_path: str | Path,
+    *,
+    title: str = "Sharper v0.2 Integration Report",
+    format: Literal["markdown", "html"] = "markdown",
+    overwrite: bool = True,
+) -> ReportArtifact: ...
+```
+
+`V02WorkflowRequest.data` is the primary raw carrier. `V02AuditRequest.reference`
+is an optional audit-only secondary carrier. The result stores typed owner
+results and Task20 metadata, not those raw DataFrames. Enabled paths run once
+in the order audit, score validation, pre-loan, post-loan, governance. The
+three primary paths are independent; audit is optional diagnostic evidence and
+governance is an optional final step.
+
+Task20 JSON accepts exactly `task20.policy.v1` and `task20.warning.v1`. It is a
+closed pure-data carrier and rejects YAML/TOML, Python configuration,
+callables, scripts, templates, includes, URLs, `$ref`, environment or path
+expansion, unknown fields/operators, duplicate keys, and non-finite values.
+Task20 reports support only `markdown` and `html`, with twelve fixed sections:
+
+```text
+Run Context
+Path Status
+Score Validation
+Data Audit and Leakage
+Pre-loan Eligibility
+Post-loan Warning
+Governance
+Cross-path Comparison
+Reason and Override Trace
+Stability and Business Evidence
+Warnings and Limitations
+Provenance and Release Readiness
+```
+
+Reporting consumes frozen results and Figures without recomputing domain
+statistics. The nine possible deterministic plot slots are
+`score_validation_gains`, `score_validation_lift`,
+`score_validation_calibration`, `score_validation_threshold`,
+`governance_importance`, `governance_candidate_comparison`,
+`governance_prediction_drift`, `governance_performance_stability`, and
+`governance_summary`.
+
+Task20-owned errors use `sharper task20: <error_key>` and the closed 28-key
+registry:
+
+```text
+invalid_request_type, request_requires_primary_path, request_path_input_conflict,
+request_raw_carrier, json_not_object, json_decode, json_encoding,
+json_duplicate_key, json_schema_version, json_unknown_field,
+json_unknown_operator, json_structure, json_scalar, json_budget,
+policy_mapping, warning_mapping, owner_call_contract, result_contract,
+report_format, report_result, report_asset_budget, report_title, report_path,
+report_overwrite, cli_argument, cli_spec_required, cli_output,
+governance_dependency_missing
+```
+
+The opt-in CLI command is `sharper v02-run INPUT --output OUTPUT`. It uses
+only the approved policy/warning JSON, score, audit, format, overwrite, and
+input options documented in the [v0.2 integration guide](v02-integration-guide.md).
+Exit codes are `0` success, `2` caller/validation errors, `3` filesystem I/O,
+and `70` unexpected internal errors. The current package is still `0.1.0` and
+v0.2 is not released. See [release readiness](release-readiness.md) for the
+version, root-export, examples, distribution, and CI gates.

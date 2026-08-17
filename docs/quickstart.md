@@ -51,3 +51,51 @@ sharper analyze customers.csv --target churned --task classification --model --o
 
 The CLI accepts local CSV and single-sheet XLSX input. Install the optional
 `excel` extra before reading XLSX files.
+
+## Opt-in v0.2 integration
+
+Task 20 keeps the v0.1 workflow independent and adds three explicit paths:
+score validation, pre-loan eligibility, and post-loan warning/lifecycle. Audit
+is an optional diagnostic attachment; governance is an optional final step.
+
+The approved final Python surface uses the following typed carriers:
+
+```python
+from sharper import (
+    V02ScoreValidationRequest,
+    V02WorkflowRequest,
+    run_v02_workflow,
+)
+
+request = V02WorkflowRequest(
+    data=frame,
+    score_validation=V02ScoreValidationRequest(
+        target="churned",
+        config=score_config,
+        external_predictions=external_predictions,
+    ),
+)
+result = run_v02_workflow(request)
+```
+
+`score_config` and `external_predictions` above are caller-created approved
+Task 15 objects. The same request carrier can opt into `audit`, `preloan`,
+`postloan`, and `governance` with their corresponding typed requests. These
+Task 20 names become part of the root release surface only after the final
+public-surface gate; the current package is still version `0.1.0`, so this
+snippet documents the approved v0.2 API rather than claiming current root
+imports are active.
+
+The CLI path is explicit and uses only the frozen options:
+
+```bash
+sharper v02-run customers.csv --output v02-report.md --policy-json policy.json
+sharper v02-run customers.csv --output v02-report.html --warning-json warning.json --format html
+```
+
+Score validation can be enabled with the approved external score options, and
+audit can be added with `--audit` and, when needed, `--reference-input`.
+`v02-run` has no governance-specific CLI option, title option, YAML/TOML
+carrier, or arbitrary-code configuration path. See the
+[v0.2 integration guide](v02-integration-guide.md) for the complete path and
+JSON boundaries. v0.2 is not released.
