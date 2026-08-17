@@ -1277,9 +1277,10 @@ started remains unchanged in this contract stage.
 
 ### 13.1 TASK20_IMPLEMENTATION_TRACKED_FILE_ALLOWLIST
 
-After the approved Task20 contract checkpoint, implementation may modify exactly the 31
-tracked paths in the table below. `existing` means the path exists in the current contract
-workspace; `new` means implementation may create that exact path. There is no wildcard,
+After the approved Task20 contract checkpoint and Governance Amendment A1 checkpoint,
+implementation may modify exactly the 32 tracked paths in the table below. `existing` means
+the path exists in the current contract workspace; `new` means implementation may create that
+exact path. There is no wildcard,
 “other necessary files”, “supporting files”, “as needed” or `etc.` escape hatch.
 
 | # | Exact path | State | Future implementation scope |
@@ -1299,22 +1300,23 @@ workspace; `new` means implementation may create that exact path. There is no wi
 | 13 | `tests/test_v02_reporting.py` | new | 12 sections, nine plots, Markdown/HTML, assets and rollback tests |
 | 14 | `tests/test_v02_cli.py` | new | command, precedence, exit, I/O and traceback tests |
 | 15 | `tests/test_v02_compatibility.py` | new | permanent v0.1 compatibility manifest independent of current version |
-| 16 | `tests/test_public_api.py` | existing | append current nine-symbol surface assertions and version parity |
-| 17 | `tests/test_distribution.py` | existing | exact wheel/sdist content, metadata, clean-install and smoke assertions |
-| 18 | `README.md` | existing | stale Task19/20 state correction and implemented opt-in usage |
-| 19 | `docs/quickstart.md` | existing | implemented v0.2 quickstart additions |
-| 20 | `docs/analysis-guide.md` | existing | implemented integration guide additions |
-| 21 | `docs/leakage.md` | existing | implemented v0.2 ownership/leakage notes |
-| 22 | `docs/api.md` | existing | exact nine-symbol API reference |
-| 23 | `docs/v02-integration-guide.md` | new | focused Task20 integration guide |
-| 24 | `docs/release-readiness.md` | new | focused release-readiness notes |
-| 25 | `examples/v02_score_validation.py` | new | synthetic Python Path A example |
-| 26 | `examples/v02_preloan.py` | new | synthetic Python Path B example |
-| 27 | `examples/v02_postloan.py` | new | synthetic Python Path C example |
-| 28 | `examples/v02_combined_report.py` | new | synthetic combined Python/report example |
-| 29 | `examples/v02_cli_json.py` | new | synthetic literal JSON/CLI example |
-| 30 | `.github/workflows/ci.yml` | existing | existing matrix/gate additions required for Task20 release evidence |
-| 31 | `CHANGELOG.md` | existing | exact Task20 user-facing changelog entry |
+| 16 | `tests/test_cli.py` | existing | update only root `--version` expected literals from `0.1.0` to `0.2.0`; preserve all other CLI regressions |
+| 17 | `tests/test_public_api.py` | existing | append current nine-symbol surface assertions and version parity |
+| 18 | `tests/test_distribution.py` | existing | exact wheel/sdist content, metadata, clean-install and smoke assertions |
+| 19 | `README.md` | existing | stale Task19/20 state correction and implemented opt-in usage |
+| 20 | `docs/quickstart.md` | existing | implemented v0.2 quickstart additions |
+| 21 | `docs/analysis-guide.md` | existing | implemented integration guide additions |
+| 22 | `docs/leakage.md` | existing | implemented v0.2 ownership/leakage notes |
+| 23 | `docs/api.md` | existing | exact nine-symbol API reference |
+| 24 | `docs/v02-integration-guide.md` | new | focused Task20 integration guide |
+| 25 | `docs/release-readiness.md` | new | focused release-readiness notes |
+| 26 | `examples/v02_score_validation.py` | new | synthetic Python Path A example |
+| 27 | `examples/v02_preloan.py` | new | synthetic Python Path B example |
+| 28 | `examples/v02_postloan.py` | new | synthetic Python Path C example |
+| 29 | `examples/v02_combined_report.py` | new | synthetic combined Python/report example |
+| 30 | `examples/v02_cli_json.py` | new | synthetic literal JSON/CLI example |
+| 31 | `.github/workflows/ci.yml` | existing | existing matrix/gate additions required for Task20 release evidence |
+| 32 | `CHANGELOG.md` | existing | exact Task20 user-facing changelog entry |
 
 The existing v0.1 examples `examples/basic_analysis.py` and
 `examples/baseline_modeling.py` are not modified by Task20 and are not duplicated in this
@@ -1333,8 +1335,8 @@ report artifact.
 | static report | `src/sharper/v02_reporting.py`, `tests/test_v02_reporting.py` |
 | opt-in CLI | `src/sharper/v02_cli.py`, `src/sharper/cli.py`, `tests/test_v02_cli.py` |
 | nine exports | `src/sharper/__init__.py`, `tests/test_public_api.py` |
-| version transition | `src/sharper/__init__.py`, `tests/test_v02_compatibility.py`, `tests/test_distribution.py` |
-| permanent/current compatibility | `tests/test_v02_compatibility.py`, `tests/test_public_api.py` |
+| version transition | `src/sharper/__init__.py`, `tests/test_v02_compatibility.py`, `tests/test_distribution.py`, `tests/test_cli.py` |
+| permanent/current compatibility | `tests/test_v02_compatibility.py`, `tests/test_public_api.py`, `tests/test_distribution.py`, `tests/test_cli.py` |
 | user-facing documentation | `README.md`, `docs/quickstart.md`, `docs/analysis-guide.md`, `docs/leakage.md`, `docs/api.md`, `docs/v02-integration-guide.md`, `docs/release-readiness.md` |
 | five Task20 examples | `examples/v02_score_validation.py`, `examples/v02_preloan.py`, `examples/v02_postloan.py`, `examples/v02_combined_report.py`, `examples/v02_cli_json.py` |
 | CHANGELOG | `CHANGELOG.md` |
@@ -1343,7 +1345,7 @@ report artifact.
 | contract/status governance | `SPEC.md`, `IMPLEMENTATION_PLAN.md`, `docs/decisions/task20-v02-integration-release-readiness-contract.md` |
 
 Every allowlisted path appears in at least one row above. No roadmap requirement maps to a
-path outside the 31-entry list, and no allowlisted path is approved merely because it might
+path outside the 32-entry list, and no allowlisted path is approved merely because it might
 be useful.
 
 ### 13.3 Version source and transition gate
@@ -1387,12 +1389,53 @@ state.
 
 ### 13.5 Allowlist change and generated-artifact gate
 
-If implementation discovers that a tracked file outside the 31-entry allowlist is required,
+If implementation discovers that a tracked file outside the 32-entry allowlist is required,
 it must stop and report `TASK20 IMPLEMENTATION ALLOWLIST BLOCKER`. It may not edit the file;
 the only next action is a bounded governance amendment that adds the exact path and purpose
 before implementation resumes. Build outputs, generated reports, PNGs, staging paths,
 backups and caches are not tracked implementation files; they must be created outside the
 repository or in a controlled ignored/untracked location and must not be committed.
+
+### 13.6 Governance Amendment A1 — I6 compatibility scope correction
+
+The I6 start gate confirmed a deterministic compatibility contradiction: the authoritative
+version transition is `0.1.0 → 0.2.0`, while the existing root CLI regression tests in
+`tests/test_cli.py` contain two expected `sharper 0.1.0` literals. Full pytest is required at
+the I6 gate, and `src/sharper/cli.py` reads the same `sharper.__version__` source for root
+`--version` output. The existing test path therefore requires a narrow scope correction
+before I6 can start.
+
+Governance Amendment A1 is a bounded implementation-allowlist amendment only. It authorizes
+`tests/test_cli.py` as the sole additional tracked path and permits only the two root
+`--version` expected-literal updates from `0.1.0` to `0.2.0`. Help, exit, `analyze`, option,
+error, output-format and all other CLI regression assertions remain unchanged. This is not a
+runtime semantic change, does not create or reopen a finding, does not reopen the unique Full
+Contract Review, and does not consume the Full Implementation Review quota.
+
+The original approved contract checkpoint remains preserved at
+`4a6fec677fab5b152efc4dbf0a15c805da469bb1`. The A1 amendment changes the implementation
+allowlist from 31 to 32 exact tracked paths and the I6 scope from 12 to 13 exact tracked
+files. The amended I6 scope is exactly:
+
+1. `src/sharper/__init__.py`
+2. `tests/test_v02_compatibility.py`
+3. `tests/test_public_api.py`
+4. `tests/test_distribution.py`
+5. `tests/test_cli.py`
+6. `examples/v02_score_validation.py`
+7. `examples/v02_preloan.py`
+8. `examples/v02_postloan.py`
+9. `examples/v02_combined_report.py`
+10. `examples/v02_cli_json.py`
+11. `.github/workflows/ci.yml`
+12. `CHANGELOG.md`
+13. `pyproject.toml`
+
+Before the A1 checkpoint, Task20 remains package version `0.1.0`, I1–I5 remain complete,
+I6 remains not started, release remains not released, and no implementation or test file is
+modified by this amendment. After the A1 checkpoint, the next and only implementation stage
+is `TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE
+READINESS`.
 
 ## 14. CI and distribution readiness matrix
 
@@ -1599,7 +1642,7 @@ the pre-checkpoint `0.1.0` gate; post-checkpoint `0.2.0` parity across import, r
 wheel metadata and sdist `PKG-INFO`; absence of a second version literal; the exact wheel
 and sdist required/forbidden content sets; exact Hatchling include/exclude behavior; source-
 free wheel/sdist/example environments; offline behavior; the existing CHANGELOG heading and
-bullet convention; the exact 31-entry tracked allowlist; roadmap-to-file coverage; reverse
+bullet convention; the exact 32-entry tracked allowlist; roadmap-to-file coverage; reverse
 allowlist justification; and rejection of any unallowlisted tracked change. These are future
 implementation obligations; this C4 document wave adds no test file and reports no
 implementation evidence.
@@ -1673,7 +1716,7 @@ Hatchling, CHANGELOG and exact-allowlist rules above; it creates no new finding.
 The C4 amendment has zero `TBD`/`TODO` placeholders in its targeted normative sections.
 Its ownership is explicit: `__version__` remains the sole version source, Hatchling owns
 only the exact sdist content table, CHANGELOG uses the existing heading/bullet convention,
-and the 31-entry tracked allowlist owns future implementation scope. C1/C2/C3 normative
+and the 32-entry tracked allowlist owns future implementation scope. C1/C2/C3 normative
 semantics remain unchanged; the fifteen findings across C1/C2/C3/C4 are closed by the
 bounded closure, with no open findings. Public symbols remain 9, dataclasses 7, result
 fields 11, Task20 errors 28, resource gates 12, report formats 2, report sections 12 and
@@ -1688,12 +1731,13 @@ Current state is frozen as:
 
 ```text
 Task20 title:                 Task 20 — v0.2 Integration and Release Readiness
-Contract:                     Approved — Go
+Contract:                     Approved — Go as amended by A1
 Contract governance:          Complete
 Implementation:               Not Started
+I1–I5:                        Complete
 Full Contract Review:         NO-GO — Permanently Closed
-Full Implementation Review:   Not Applicable — Implementation Not Started
-Task20:                       Ready for Implementation
+Full Implementation Review:   Not Yet Executed — quota 1 available
+Task20:                       Ready for I6
 Package version:              0.1.0
 Future implementation target: 0.2.0
 Release state:                Not Implemented / Not Released
@@ -1703,9 +1747,10 @@ C2 finding status:            T20-CR-06..08 CLOSED
 C3 finding status:            T20-CR-09..12 CLOSED
 C4 finding status:            T20-CR-13..15 CLOSED
 Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
-Approved checkpoint:          This exact three-document commit
+Approved checkpoint:          Original three-document commit preserved
+Amended A1 checkpoint:         This exact Governance Amendment A1 commit
 Second Full Contract Review:  Forbidden
-Next stage:                   TASK20 — PHASED IMPLEMENTATION KICKOFF
+Next stage:                   TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS
 ```
 
 No production file, test, CLI implementation, example, CI workflow, `README.md`,

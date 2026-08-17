@@ -1544,7 +1544,7 @@ tables。不生成 adverse-action notice、合规认证、因果结论或自动�
 
 ### Task 20 — v0.2 Integration and Release Readiness
 
-**状态：Contract Definition complete；Contract Governance Complete；Approved — Go；Full Contract Review NO-GO — Permanently Closed；Implementation Not Started；Task20 Ready for Implementation。**
+**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendment A1；Full Contract Review NO-GO — Permanently Closed；I1–I5 Complete；I6 Not Started；Task20 Ready for I6。**
 
 **合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
@@ -1571,24 +1571,39 @@ ordinal filenames、Task13 title/path/overwrite transaction、ReportArtifact fie
 字段、errors、budgets、sections、CLI、allowlist、A–X acceptance matrix 和 findings
 只以该合同为准。C4 进一步冻结单一 `__version__` source、0.1.0 checkpoint、唯一
 0.1.0→0.2.0 gate、wheel/sdist content matrix、exact Hatchling sdist table、CHANGELOG
-existing format、31-entry tracked allowlist 和 roadmap-to-file matrix；C4 不改变
+existing format、32-entry tracked allowlist 和 roadmap-to-file matrix；C4 不改变
 symbols、dataclasses、result fields、errors、resource gates、formats、sections 或
 plot slots。
 
+**Governance Amendment A1**
+
+I6 start gate 发现现有 `tests/test_cli.py` 的 root `--version` regression assertions
+仍期待 `sharper 0.1.0`，而 I6 的唯一版本源 transition 要求 root CLI 最终输出
+`sharper 0.2.0`，同时 I6 要求 full pytest PASS。A1 是 bounded governance amendment，
+仅将 `tests/test_cli.py` 加入 Task20 implementation allowlist 和 I6 exact scope，授权
+把现有 version expected literal 从 `0.1.0` 更新为 `0.2.0`；help、exit、analyze 和其他
+CLI assertions 必须保持不变。
+
+因此 implementation allowlist 从 31 增至 32，I6 exact scope 从 12 增至 13。A1 不改变
+任何 runtime/API/error/resource/report/JSON/CLI 语义，不重新打开 `T20-CR-01..15`，不执行
+Full Contract Review 或 Full Implementation Review，也不改变 I1–I5 completion history。
+
 **下一阶段与阻塞条件**
 
-第二次 Full Contract Review 为 **Forbidden**。approved contract checkpoint 提交后，
-implementation 可进入 phased kickoff；本阶段不修改 production、tests、CLI implementation、
+第二次 Full Contract Review 为 **Forbidden**。A1 checkpoint 提交后，implementation 可进入
+Wave I6；I6 exact scope 为 13 个文件，并包含 `tests/test_cli.py`。本阶段不修改 production、tests、CLI implementation、
 examples、CI、README、`docs/api.md`、`pyproject.toml`、version、exports 或 dependencies，
 也不执行 push/tag/release。Targeted fix waves C1–C4 已完成；下一阶段为
-**TASK20 — PHASED IMPLEMENTATION KICKOFF**。
+**TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS**。
 
 ```text
-Contract Governance:         Complete
+Contract Governance:         Complete — Approved — Go as amended by A1
 Bounded Contract Closure:    PASS (15 CLOSED / 0 OPEN)
-Approved Contract Checkpoint: This exact three-document commit
+Approved Contract Checkpoint: Original three-document commit 4a6fec677fab5b152efc4dbf0a15c805da469bb1
+Amended Contract Checkpoint:  This exact Governance Amendment A1 commit
 Current Package Version:     0.1.0
 Implementation Target:       0.2.0
+I6 Scope:                    13 exact tracked files, including tests/test_cli.py
 Task20 Release Goal:         Release Ready — Not Released
 ```
 
