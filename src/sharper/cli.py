@@ -11,6 +11,7 @@ import typer
 from sharper import __version__
 from sharper.io import load_csv, load_excel
 from sharper.reporting import generate_analysis_report
+from sharper.v02_cli import v02_run
 from sharper.workflow import AnalysisRun, run_analysis
 
 app = typer.Typer(help="Analyze structured tabular data.")
@@ -135,6 +136,9 @@ def _close_run_figures(run: AnalysisRun) -> None:
             if id(figure) not in seen and figure.number in plt.get_fignums():
                 seen.add(id(figure))
                 plt.close(figure)
+
+
+app.command("v02-run")(v02_run)
 
 
 if __name__ == "__main__":
