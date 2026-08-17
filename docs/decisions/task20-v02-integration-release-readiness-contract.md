@@ -1494,11 +1494,40 @@ The final I6 exact scope after A2 is:
 18. `docs/v02-integration-guide.md`
 19. `docs/release-readiness.md`
 
-I6 sequencing is frozen as: complete the version, root-surface, examples, distribution and
-CI implementation; obtain the corresponding evidence; perform the six authorized
-post-transition truth-sync edits; run the post-I6 documentation truth scan; then execute
-the final tests, build, examples, distribution and A–X gates. If I6 fails before completion,
-the six documents must not be written as if all readiness gates passed.
+The A2-era exact-19 list above is historical. Governance Amendment A3 is a bounded
+pre-Full-Implementation-Review interoperability repair authorization. Its mechanical root-cause
+gate confirmed that the approved `path_status` contract freezes a `boolean` dtype and boolean
+semantics, not built-in scalar identity. The real workflow's schema, dtype, row order, status and
+reason values are contract-valid; pandas `boolean` storage returns `numpy.bool_` scalars. The I3
+reporting validator instead requires `type(value) is bool`, so a real workflow result is rejected
+with `sharper task20: report_result` by both report generation and the real `v02-run` path. This
+is an implementation interoperability defect owned by `src/sharper/v02_reporting.py`, not a
+contract defect.
+
+A3 keeps the global implementation allowlist at exactly 32 and changes the current I6 scope from
+19 to exactly 21 by adding only these existing allowlisted paths:
+
+20. `src/sharper/v02_reporting.py` — accept the exact contract-valid boolean scalar family
+    produced by the approved dtype, while rejecting non-boolean scalar domains without
+    truthiness coercion.
+21. `tests/test_v02_reporting.py` — add the direct real workflow→report regression and the
+    invalid-scalar negative regression.
+
+The A3 runtime authorization is narrow: it does not change `src/sharper/v02_workflow.py`, the
+`path_status` semantic dtype/schema, report signatures, twelve sections, nine plot slots, report
+errors, precedence, transactions, Figure ownership, CLI implementation, or any other runtime
+contract. The accepted domain is exact built-in `bool` plus the existing pandas/NumPy boolean
+scalar family required by the approved dtype; integers, floats, strings, `None`, `pd.NA` and
+arbitrary truthy/falsy coercions remain invalid. A3 adds no dependency, no global path, no finding,
+no second Full Contract Review and no Full Implementation Review consumption. A1 and A2 remain
+active, `docs/leakage.md` remains immutable, and release remains not released.
+
+I6 sequencing is frozen as: first apply the A3 reporting interoperability repair and its direct
+regression, then run the real workflow→report and real `v02-run` smoke; next complete the version,
+root-surface, examples, distribution and CI implementation; obtain the corresponding evidence;
+perform the six authorized post-transition truth-sync edits; run the post-I6 documentation truth
+scan; then execute the final tests, build, examples, distribution and A–X gates. If I6 fails
+before completion, the six documents must not be written as if all readiness gates passed.
 
 ## 14. CI and distribution readiness matrix
 
@@ -1776,7 +1805,8 @@ Hatchling, CHANGELOG and exact-allowlist rules above; it creates no new finding.
 
 ## 19. Self-consistency and current gate
 
-The C4 amendment has zero `TBD`/`TODO` placeholders in its targeted normative sections.
+The C4 and A3 amendments have zero `TBD`/`TODO` placeholders in their targeted normative
+sections. A3 leaves the C1–C4 contract semantics and all frozen runtime/API counts unchanged.
 Its ownership is explicit: `__version__` remains the sole version source, Hatchling owns
 only the exact sdist content table, CHANGELOG uses the existing heading/bullet convention,
 and the 32-entry tracked allowlist owns future implementation scope. C1/C2/C3 normative
@@ -1784,7 +1814,7 @@ semantics remain unchanged; the fifteen findings across C1/C2/C3/C4 are closed b
 bounded closure, with no open findings. Public symbols remain 9, dataclasses 7, result
 fields 11, Task20 errors 28, resource gates 12, report formats 2, report sections 12 and
 plot slots 9;
-C4 changes none of these runtime/API counts. It approves no mandatory dependency change.
+C4 and A3 change none of these runtime/API counts. They approve no mandatory dependency change.
 
 This contract-definition stage has completed its own documentation/inventory checks only;
 it does not claim Python tests, Ruff, build, distribution, CLI smoke or implementation
@@ -1794,7 +1824,7 @@ Current state is frozen as:
 
 ```text
 Task20 title:                 Task 20 — v0.2 Integration and Release Readiness
-Contract:                     Approved — Go as amended by A1 + A2
+Contract:                     Approved — Go as amended by A1 + A2 + A3
 Contract governance:          Complete
 Implementation:               Not Started
 I1–I5:                        Complete
@@ -1813,13 +1843,14 @@ Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
 Approved checkpoint:          Original three-document commit preserved
 Amended A1 checkpoint:         d0ced4a11257423bc11c442462cd3fff8d000656
 Amended A2 checkpoint:         This exact Governance Amendment A2 commit
+A3 checkpoint:                 This exact Governance Amendment A3 commit
 Global implementation allowlist: 32
-I6 exact scope:                19
+I6 exact scope:                21
 Second Full Contract Review:  Forbidden
-Next stage:                   TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS
+Next stage:                   TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS AS AMENDED BY A1 + A2 + A3
 ```
 
-No production file, test, CLI implementation, example, CI workflow, `README.md`,
-`docs/api.md`, `pyproject.toml`, version, export, dependency, push, tag or release is
-authorized by this status-sync record. The exact three-document commit is the approved
-contract checkpoint; implementation begins only in the next stage.
+No implementation file, test, CLI implementation, example, CI workflow, `README.md`,
+`docs/api.md`, `pyproject.toml`, version, export, dependency, push, tag or release is changed
+by this governance amendment. The exact three-document A3 commit is the approved governance
+checkpoint; the authorized 21-file implementation scope begins only in the next stage.

@@ -1544,7 +1544,7 @@ tables。不生成 adverse-action notice、合规认证、因果结论或自动�
 
 ### Task 20 — v0.2 Integration and Release Readiness
 
-**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2；Full Contract Review NO-GO — Permanently Closed；I1–I5 Complete；I6 Not Started；Task20 Ready for I6。**
+**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2 + A3；Full Contract Review NO-GO — Permanently Closed；I1–I5 Complete；I6 Not Started；Task20 Ready for I6。**
 
 **合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
@@ -1605,25 +1605,47 @@ Task20 completion、example availability、distribution/CI readiness 和最终 r
 public API、error/resource/schema/report/CLI contract，不创建 finding，不 reopen review，
 不消费 Full Implementation Review quota；I5 仍为 COMPLETE，A1 仍有效。
 
+**Governance Amendment A3**
+
+A3 是 bounded pre-Full-Implementation-Review interoperability repair authorization。根因
+门禁确认 approved `path_status` contract 冻结的是 `boolean` dtype/boolean semantics，而非
+每个 scalar 必须满足 `type(value) is bool`；`src/sharper/v02_workflow.py` 当前生成的
+schema、dtype、row order、status/reason 均符合合同，pandas `boolean` column 的合法 scalar
+representation 是 `numpy.bool_`。`src/sharper/v02_reporting.py` 的 result validation
+过窄地只接受 built-in `bool`，造成真实 workflow→report 和 real `v02-run` 的
+`sharper task20: report_result` 失败。因此该问题是 I3 reporting interoperability
+implementation defect，不是 contract defect。
+
+A3 不扩大 global implementation allowlist（仍为 32），仅将已在 allowlist 中的
+`src/sharper/v02_reporting.py` 与 `tests/test_v02_reporting.py` 加入 I6，使 exact scope
+从 19 增至 21。I6 只可接受 exact built-in `bool` 与合同允许的现有 pandas/NumPy boolean
+scalar family，拒绝 int/float/string/`None`/`pd.NA` 及开放 truthiness coercion；必须新增真实
+workflow→report regression 和 invalid-scalar negative regression。不得修改 workflow、
+CLI、其他 tests、report contract、sections、plots、errors、precedence、transactions 或
+Figure ownership。A1、A2、`docs/leakage.md`、Full Contract Review closure、Full
+Implementation Review quota 与未发布状态保持不变。
+
 **下一阶段与阻塞条件**
 
 第二次 Full Contract Review 为 **Forbidden**。A2 checkpoint 提交后，implementation 可进入
-Wave I6；I6 exact scope 为 19 个文件，并包含 `tests/test_cli.py` 与六个 A2-authorized
-post-transition truth-sync docs。本阶段不修改 `docs/leakage.md`、其他 user docs、production、tests、CLI implementation、
-examples、CI、`pyproject.toml`、version、exports 或 dependencies，
+Wave I6；I6 exact scope 为 21 个文件，并包含 `tests/test_cli.py`、六个 A2-authorized
+post-transition truth-sync docs、以及 A3 reporting repair 与 direct regression。本阶段不修改
+`docs/leakage.md`、其他 user docs、workflow、CLI implementation、其他 tests、examples、CI、
+`pyproject.toml`、version、exports 或 dependencies，
 也不执行 push/tag/release。Targeted fix waves C1–C4 已完成；下一阶段为
 **TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS**。
 
 ```text
-Contract Governance:         Complete — Approved — Go as amended by A1 + A2
+Contract Governance:         Complete — Approved — Go as amended by A1 + A2 + A3
 Bounded Contract Closure:    PASS (15 CLOSED / 0 OPEN)
 Approved Contract Checkpoint: Original three-document commit 4a6fec677fab5b152efc4dbf0a15c805da469bb1
 Amended Contract Checkpoint:  A1 commit d0ced4a11257423bc11c442462cd3fff8d000656
 A2 Checkpoint:                This exact Governance Amendment A2 commit
+A3 Checkpoint:                This exact Governance Amendment A3 commit
 Current Package Version:     0.1.0
 Implementation Target:       0.2.0
 Global Implementation Allowlist: 32 exact tracked files
-I6 Scope:                    19 exact tracked files, including six A2 docs
+I6 Scope:                    21 exact tracked files, including six A2 docs and two A3 repair paths
 Task20 Release Goal:         Release Ready — Not Released
 ```
 

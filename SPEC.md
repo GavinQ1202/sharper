@@ -978,6 +978,24 @@ integration guide 和 release-readiness guide 中的六类 unconditional current
 schema/report/CLI 语义，不创建或重开 finding，不重新执行任何 Full Review，也不消费
 Full Implementation Review quota。
 
+**Governance Amendment A3** 记录并授权一个 bounded pre-review interoperability repair。
+A3 的根因门禁确认：合同冻结的 `path_status` 是 `boolean` dtype/boolean semantics，未要求
+每个读取出的 scalar 必须是内置 `bool`；当前 `v02_workflow.py` 生成的列、dtype、schema、
+行顺序、状态和 reason 均符合合同，但 pandas `boolean` 列读取出的合法 scalar 是
+`numpy.bool_`。I3 的 `v02_reporting.py` 却以 `type(value) is bool` 拒绝该合同合法结果，导致
+真实 workflow→report 与 real `v02-run` 失败。根因因此是 reporting consumer validation
+过窄的 implementation interoperability defect，不是合同缺陷。
+
+A3 将 I6 exact scope 从 19 增至 21，仅加入已在 global32 中的
+`src/sharper/v02_reporting.py` 与 `tests/test_v02_reporting.py`。I6 只可让 reporting
+接受合同允许的内置 `bool` 与现有 pandas/NumPy boolean scalar family，并继续拒绝整数、
+浮点数、字符串、`None`、`pd.NA` 和任意 truthy/falsy coercion；必须增加真实
+`run_v02_workflow`→`generate_v02_report` 回归以及 invalid-scalar negative regression。
+A3 不改变 workflow、`path_status` dtype/schema、report signature、12 sections、9 plot slots、
+errors、precedence、transaction、Figure ownership 或任何 runtime semantic contract；不得
+修改 workflow、CLI、其他 tests 或扩大 global allowlist。A1、A2、`docs/leakage.md`、
+Full Contract Review closure、Full Implementation Review quota 和未发布状态保持不变。
+
 当前 C1 的 `T20-CR-01..05`、C2 的 `T20-CR-06..08`、C3 的
 `T20-CR-09..12` 与 C4 的 `T20-CR-13..15` 均为`CLOSED`，bounded contract closure 为
 `PASS`，OPEN finding 数为 0；approved contract checkpoint 提交后允许进入
@@ -986,19 +1004,21 @@ implementation kickoff。Task20 不扩充
 Tasks 15--19 facts，不新增 mandatory dependency，也不 tag/push/upload/创建 release 或
 实际发布。
 
-**下一阶段：** TASK20 IMPLEMENTATION — WAVE I6。I6 exact scope 为 19 个文件，包含 A2
-授权的六个 post-transition truth-sync 文档。第二次 Full Contract Review：Forbidden。
+**下一阶段：** TASK20 IMPLEMENTATION — WAVE I6。I6 exact scope 为 21 个文件，包含 A2
+授权的六个 post-transition truth-sync 文档和 A3 reporting interoperability repair。
+第二次 Full Contract Review：Forbidden。
 
 ```text
-Contract Governance:          Complete — Approved — Go as amended by A1 + A2
+Contract Governance:          Complete — Approved — Go as amended by A1 + A2 + A3
 Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
 Approved Contract Checkpoint: Original three-document commit 4a6fec677fab5b152efc4dbf0a15c805da469bb1
 Amended Contract Checkpoint:   A1 commit d0ced4a11257423bc11c442462cd3fff8d000656
 A2 Checkpoint:                 This exact Governance Amendment A2 commit
+A3 Checkpoint:                 This exact Governance Amendment A3 commit
 Current Package Version:      0.1.0
 Implementation Target:        0.2.0
 Global Implementation Allowlist: 32 exact tracked files
-I6 Scope:                     19 exact tracked files, including six A2 docs
+I6 Scope:                     21 exact tracked files, including six A2 docs and two A3 repair paths
 Task20 Release Goal:          Release Ready — Not Released
 ```
 
