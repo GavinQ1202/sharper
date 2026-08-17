@@ -100,7 +100,7 @@ schema -> pandas/numpy only
 
 ### 2.1 规格与实施计划的职责
 
-`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task 19 original contract checkpoint为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task 20 contract和implementation未开始。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
+`SPEC.md` 定义产品定位、模块边界、公共原则和已批准版本路线。`IMPLEMENTATION_PLAN.md` 是任务执行依据：Tasks 01--14 记录已完成的 v0.1；Tasks 15--17 implementation 均已完成且 review 为 `Go`；Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task 19 original contract checkpoint为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task 20 唯一一次 Full Contract Review 已以`NO-GO — Permanently Closed`结束，C1–C4 targeted fixes 与 bounded closure 已完成，合同治理为`Approved — Go`，冻结 findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`，已 ready for implementation。每个 Task 的精确 API、允许文件、错误、排序和验收行为仍须由独立决策记录冻结。两者出现阶段划分或交付顺序冲突时，应先同步并评审治理文件，不得在实现中自行合并、跳过或扩大 Task。
 
 ## 3. 推荐目录结构
 
@@ -791,8 +791,11 @@ Task 16 contract 已批准为 `Approved — Go`，其 implementation 已完成�
 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18唯一一次full
 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；
 Task 19 original contract checkpoint已批准为`Approved — Go`；当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；
-Task 20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
-version 仍为 `0.1.0`。其权威路线合同为
+Task 20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4
+targeted fixes 与 bounded contract closure 已完成，当前合同为`Approved — Go`，frozen
+findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且
+ready for implementation；v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
+其权威路线合同为
 `docs/decisions/v02-roadmap-contract.md`；本节冻结产品和架构边界，不冻结任何
 Task 15--20 public symbol、签名或 dataclass 字段。
 
@@ -883,7 +886,7 @@ declarations承载model coefficient/native/permutation attribution、prediction 
 performance slices和governance metadata，并拥有带fixed-seed/count-only bootstrap uncertainty的
 prediction TVD、带fixed-seed vector bootstrap uncertainty的model performance stability及
 result-only plots。它不接受或执行estimator/callable/raw feature matrix，不新增mandatory dependency，
-不进入Task 20 workflow/report/CLI/release范围。Task 20仍未开始。
+不进入Task 20 workflow/report/CLI/release范围。Task 20 implementation仍未开始。
 
 Task19 FIX-B后直接、单向消费四个typed predecessor-result tuples；每个candidate以本次调用内的
 0-based result position和owner-approved candidate locator绑定specific source。Model和strategy result
@@ -921,6 +924,63 @@ evaluation/recommendation/summary maxima分别为15/960/960/15/16，provenance�
 状态已同步；`T19-CR-08/14/15/16`均已`Closed`。Task19 amended contract为`Approved — Go v2`，implementation为
 `Implemented — Post-Review Closure Complete`；唯一一次Full Implementation Review为`NO-GO — Permanently Closed`，冻结的`T19-IR-01..06`为`6 Closed / 0 Open`，bounded implementation closure与post-review final validation均为`PASS`；A–O与16/16 roadmap traceability均已Closed；Implementation Stage已Complete；Task19为`Complete`；下一阶段唯一为`TASK19 FINAL IMPLEMENTATION CHECKPOINT COMMIT`。
 
+### Task 20 contract stage
+
+**状态：Approved — Go；Contract Governance Complete；Full Contract Review NO-GO — Permanently Closed；Implementation Not Started；Task20 Ready for Implementation。**
+
+**合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
+
+Task 20 的 scope freeze、C1、C2、C3 与 C4 targeted amendments 冻结了独立 opt-in `v02_workflow`/static
+report surface、score validation/pre-loan/post-loan 三条可独立启用路径、显式 optional
+Task 16 audit handoff、显式 optional Task 19 governance final step、Tasks 15--19 的
+exact-call matrix、result-only Markdown/HTML、两个 versioned closed pure-data JSON
+schemas、Task 13 Figure/asset ownership、独立 `sharper v02-run` adapter、永久 v0.1
+compatibility manifest、append-only exports、0.1.0→0.2.0 metadata gate、docs/examples/
+CI/distribution acceptance 和 release-readiness-only boundary。C1 进一步冻结了：
+score CLI 的 closed external-prediction Path A predicate 与 Task 15 caller mapping、
+Task 19 governance dependency matrix 与 exactly-once gate、primary/secondary raw
+DataFrame carrier roles、Task 15 closed `positive_label` domain，以及 warning/
+limitation token grammar、source inventories、ordering、deduplication 和 parity。
+精确 symbols、字段、errors、resources、report sections、CLI 参数和 A–X acceptance
+matrix 只以该 decision record 为准；C1 不提前处理 C2 findings，C2 不提前处理 C3
+findings，C3 不提前处理 C4 findings，C4 不提前处理 bounded closure。C2 进一步冻结了 policy JSON 中所有 Task17 tuple/sequence 的唯一
+array representation 与 exact arity/order/duplicate semantics、Task17/18 JSON temporal
+fields 的 exact six-digit UTC/naive grammar 与 integer-microsecond duration carrier，
+以及 12-row resource registry、per-object/per-array/depth/condition counting、report
+figure-entry pre-acquisition gate 和 staged aggregate PNG-byte gate。C3 进一步冻结了
+exact12 report-section provenance matrix、enabled-empty/not-requested distinction、
+nine-slot result-only plot registry、fixed ordinal filenames、Task13 title/path/overwrite
+transaction、ReportArtifact field mapping、四套 API-specific validation precedence tables
+与28-key error reachability matrix。
+
+C4 进一步冻结唯一版本源 `src/sharper/__init__.py::__version__`、`dynamic` Hatchling
+version linkage、approved checkpoint 仍为 `0.1.0`、唯一 `0.1.0→0.2.0` transition gate、
+wheel/sdist 分离的 exact content matrix、Hatchling sdist include/exclude table、
+CHANGELOG existing heading/bullet contract、31-entry exact future tracked allowlist 和
+roadmap-to-file matrix。wheel 仅承载 runtime package；sdist 承载 buildable source、
+approved docs、decisions、tests、CHANGELOG、license、README 与七个 examples；二者均
+禁止缓存、生成物、notebooks、内部机器文件、credentials 和发布配置。
+
+唯一一次 Full Contract Review 已以`NO-GO — Permanently Closed`结束，第二次 Full Contract
+Review 被禁止。当前 C1 的 `T20-CR-01..05`、C2 的 `T20-CR-06..08`、C3 的
+`T20-CR-09..12` 与 C4 的 `T20-CR-13..15` 均为`CLOSED`，bounded contract closure 为
+`PASS`，OPEN finding 数为 0；approved contract checkpoint 提交后允许进入
+implementation kickoff。Task20 不扩充
+`AnalysisRun`、`run_analysis`、`sharper analyze`，不复制 Task16 private kernel，不重算
+Tasks 15--19 facts，不新增 mandatory dependency，也不 tag/push/upload/创建 release 或
+实际发布。
+
+**下一阶段：** TASK20 — PHASED IMPLEMENTATION KICKOFF。第二次 Full Contract Review：Forbidden。
+
+```text
+Contract Governance:          Complete
+Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
+Approved Contract Checkpoint: This exact three-document commit
+Current Package Version:      0.1.0
+Implementation Target:        0.2.0
+Task20 Release Goal:          Release Ready — Not Released
+```
+
 Tasks 17 和 18 并列且不相互依赖；Task 18 仅在使用模型分数时可选消费 Task 15。
 Task 19 不重算 Tasks 15--18 的指标、missingness drift、规则、动作、alerts、backtest
 或 lifecycle tables；Task 20 不承载领域算法。现有 `analysis.py` 保持 v0.1 职责，
@@ -938,9 +998,14 @@ mapping 时才计算 selection/rejection/review/request-information 等业务指
 mapping 时只输出通用 action distribution，不从名称猜测批准、拒绝或人工审核含义。
 constraints 只评价 caller-frozen action scenario，不生成、改写或优化动作。
 
-Task 20 的 CLI 只规划版本化、封闭、纯数据 JSON policy/warning spec。未知 schema
-version、字段或 operator 必须失败；不接受 YAML/TOML、Python 表达式、函数、脚本、
-模板、include、`$ref`、环境变量或路径展开，也不得演变为通用规则 DSL。
+Task 20 的 CLI 规划版本化、封闭、纯数据输入：Path A 只接受显式
+external-ranking-score 或 external-event-probability 列、严格 boolean validation
+mask、显式 typed positive label、ranking direction/probability provenance，以及固定
+`stratified_holdout` 的 score options；Path B/C 继续使用版本化 JSON policy/warning
+spec。Path A 不自动推断 target、score、mask、label、direction、probability 或
+maturity；Governance 保持 Python-only。未知 schema/version、字段、operator、score
+kind 或 label encoding 必须失败；不接受 YAML/TOML、Python 表达式、函数、脚本、模板、
+include、`$ref`、环境变量或路径展开，也不得演变为通用规则 DSL。
 
 ### 16.5 Public API、依赖与 v0.1 兼容
 

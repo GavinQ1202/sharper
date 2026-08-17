@@ -6,7 +6,7 @@ Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通�
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18 contract已批准为`Approved — Go`，
-final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 contract和implementation未开始；
+final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；
 v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
 v0.1 保持以下完整轻量闭环：
 
@@ -1293,7 +1293,7 @@ v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完�
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
 且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 contract和implementation未开始。不得跨 Task 提前实现。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation。approved checkpoint 后方可开始 Task20 implementation，不得跨 Task 提前实现。
 
 **目标**
 
@@ -1338,7 +1338,7 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
 已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 contract和implementation未开始；v0.2 整体尚未完成或发布，当前 package
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；v0.2 整体尚未完成或发布，当前 package
 version 仍为 `0.1.0`。
 
 **目标**
@@ -1385,7 +1385,7 @@ implementation fixes已完成，第一次bounded implementation closure为`No-Go
 implementation fixes已完成，final bounded implementation closure为`Go`，P0/P1/P2均为`0`。
 Task 17 implementation complete — review Go，后续不得再次执行开放式full implementation review；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 contract和implementation未开始；v0.2整体尚未完成或发布，当前package version
+`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；v0.2整体尚未完成或发布，当前package version
 仍为`0.1.0`。
 
 **目标**
@@ -1544,34 +1544,66 @@ tables。不生成 adverse-action notice、合规认证、因果结论或自动�
 
 ### Task 20 — v0.2 Integration and Release Readiness
 
-**状态：规划已批准，合同未开始。**
+**状态：Contract Definition complete；Contract Governance Complete；Approved — Go；Full Contract Review NO-GO — Permanently Closed；Implementation Not Started；Task20 Ready for Implementation。**
 
-**目标**
+**合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
-把 Tasks 15--19 frozen public results 接入独立 opt-in v0.2 workflow、静态报告和 CLI，
-完成文档、示例、兼容性、distribution 和 CI readiness，但不实际发布。
+**当前阶段完成内容**
 
-**依赖**
+Task 20 contract definition / scope freeze 已完成，并已完成 C1–C4 targeted contract
+fixes 与 bounded contract closure。历史唯一一次 Full Contract Review 的 verdict 为
+`NO-GO — Permanently Closed`；冻结 findings 为 `T20-CR-01..15`，其中 C1 的
+`T20-CR-01..05`、C2 的 `T20-CR-06..08`、C3 的 `T20-CR-09..12` 与 C4 的
+`T20-CR-13..15` 均为`CLOSED`，bounded closure 为`PASS`，Open findings 为 `0`。C1 冻结独立 opt-in
+workflow/result、score validation/pre-loan/post-loan 三条可独立启用路径、显式 Task 16
+audit handoff、显式 Task 19 governance final step、Tasks 15--19 exact-call matrix、
+result-only Markdown/HTML、两个 closed pure-data JSON schemas、Task 13 Figure/asset
+ownership、独立 `sharper v02-run` adapter、永久 v0.1 compatibility manifest、append-only
+exports、0.1.0→0.2.0 metadata gate、docs/examples/CI/distribution acceptance 与
+release-readiness-only boundary，并额外冻结 score CLI Path A predicate/Task 15 mapping、
+governance dependency matrix、raw carrier roles、closed positive-label domain 和
+warning/limitation token contract。C2 进一步冻结 policy JSON 的唯一 tuple/sequence
+array mapping、Task17/18 temporal/duration grammar、exact 12-row resource registry、
+counting units、pre-acquisition figure gate 和 staged aggregate PNG gate。C3 进一步冻结
+exact12 report-section provenance matrix、nine-slot result-only plot registry、fixed
+ordinal filenames、Task13 title/path/overwrite transaction、ReportArtifact field mapping、
+四套 API-specific precedence tables与28-key error reachability matrix；精确 API、
+字段、errors、budgets、sections、CLI、allowlist、A–X acceptance matrix 和 findings
+只以该合同为准。C4 进一步冻结单一 `__version__` source、0.1.0 checkpoint、唯一
+0.1.0→0.2.0 gate、wheel/sdist content matrix、exact Hatchling sdist table、CHANGELOG
+existing format、31-entry tracked allowlist 和 roadmap-to-file matrix；C4 不改变
+symbols、dataclasses、result fields、errors、resource gates、formats、sections 或
+plot slots。
 
-Tasks 15--19 全部完成并通过各自合同。
+**下一阶段与阻塞条件**
 
-**范围**
+第二次 Full Contract Review 为 **Forbidden**。approved contract checkpoint 提交后，
+implementation 可进入 phased kickoff；本阶段不修改 production、tests、CLI implementation、
+examples、CI、README、`docs/api.md`、`pyproject.toml`、version、exports 或 dependencies，
+也不执行 push/tag/release。Targeted fix waves C1–C4 已完成；下一阶段为
+**TASK20 — PHASED IMPLEMENTATION KICKOFF**。
 
-- 新的 opt-in workflow/result，不扩充 v0.1 `AnalysisRun`；
-- score validation、pre-loan eligibility、post-loan warning 三条独立路径及可组合报告；
-- result-only 静态 Markdown/HTML 与既有 Figure/asset ownership；
-- 只解析 versioned、closed、pure-data JSON policy/warning spec 的 CLI adapter；未知
-  schema version、field/operator、非 JSON、duplicate key 或超预算嵌套明确失败；
-- examples、API/guide/leakage 文档和发行准备说明；
-- 永久 `v0.1 compatibility invariants` 与 `current release surface` tests；
-- pytest/Ruff、wheel/sdist、独立 clean-install、CLI/examples smoke 和 CI readiness。
+```text
+Contract Governance:         Complete
+Bounded Contract Closure:    PASS (15 CLOSED / 0 OPEN)
+Approved Contract Checkpoint: This exact three-document commit
+Current Package Version:     0.1.0
+Implementation Target:       0.2.0
+Task20 Release Goal:         Release Ready — Not Released
+```
 
-**边界**
+**未来 implementation phases（仅章节级，不提前授权）**
 
-workflow 只编排 public APIs，reporting 不重算，CLI 不含领域算法。CLI 不接受
-YAML/TOML、Python、函数、脚本、模板、环境变量或路径展开，不建立通用规则 DSL。
-Task 20 不 tag、push、upload、创建 release 或实际发布；版本和 exports 的精确迁移只
-能由 Task 20 独立合同授权。
+1. contract approval checkpoint 与 exact public surface；
+2. closed JSON adapters、mapping、budgets、stable errors；
+3. independent workflow orchestration、handoff、call-count 和 no-recomputation tests；
+4. result-only Markdown/HTML、Figure/asset lifecycle、rollback；
+5. opt-in CLI、Python/CLI parity、examples 与 guides；
+6. permanent v0.1 compatibility/current release surface tests、CI、build、distribution、
+   clean-install 与 release-readiness evidence；
+7. bounded implementation review、final Task20 Go 和 release-ready-not-released closure。
+
+上述 phases 不表示 implementation 已开始，也不授权跳过 contract review 或扩大 allowlist。
 
 ## 4. 依赖顺序总览
 
