@@ -36,6 +36,7 @@ from sharper.evaluation import (
     _validate_classification_evaluation,
     _validate_regression_evaluation,
 )
+from sharper.model_governance import GovernanceResult
 from sharper.risk_validation import BinaryRiskValidationResult
 
 _BLUE = "#4C78A8"
@@ -1660,4 +1661,79 @@ def plot_binary_risk_validation(
             axes.set_ylim(0.0, 1.0)
     axes.set_xlim(0.0, 1.0)
     axes.legend()
+    return figure
+
+
+def plot_model_governance(
+    result: GovernanceResult,
+    *,
+    kind: Literal[
+        "importance",
+        "candidate_comparison",
+        "prediction_drift",
+        "performance_stability",
+        "governance_summary",
+    ],
+) -> Figure:
+    """Plot one already-materialized model-governance result table.
+
+    This result-only function performs no governance evaluation, owner lookup,
+    model execution, or metric recomputation. The returned Figure is caller-owned.
+    """
+    if type(result) is not GovernanceResult:
+        raise ValueError("model governance plot result is invalid")
+    kinds = {
+        "importance": (
+            result.model_attributions,
+            "feature_key",
+            "value",
+            "Model importance",
+        ),
+        "candidate_comparison": (
+            result.candidate_comparisons,
+            "criterion_position",
+            "delta",
+            "Candidate comparison",
+        ),
+        "prediction_drift": (
+            result.prediction_drift,
+            "scope_key",
+            "prediction_tvd",
+            "Prediction drift",
+        ),
+        "performance_stability": (
+            result.performance_stability,
+            "scope_key",
+            "delta",
+            "Performance stability",
+        ),
+        "governance_summary": (
+            result.governance_summary,
+            "candidate_position",
+            "available_criterion_count",
+            "Governance summary",
+        ),
+    }
+    if type(kind) is not str or kind not in kinds:
+        raise ValueError("model governance plot kind is invalid")
+    table, category, value, title = kinds[kind]
+    if type(table) is not pd.DataFrame or not {category, value, "status"}.issubset(
+        table.columns
+    ):
+        raise ValueError("model governance plot schema is invalid")
+    available = table.loc[table["status"].eq("available")]
+    if available.empty or available[value].isna().all():
+        raise ValueError("model governance plot evidence is unavailable")
+    values = available[value].astype("float64").to_numpy()
+    labels = available[category].astype("string").tolist()
+    figure = Figure(figsize=(8, max(3.5, 0.38 * len(labels))))
+    FigureCanvasAgg(figure)
+    axes = figure.subplots()
+    positions = np.arange(len(labels))
+    axes.barh(positions, values, color=_BLUE)
+    axes.set_yticks(positions, labels=labels)
+    axes.set_xlabel(value.replace("_", " ").title())
+    axes.set_title(title)
+    axes.invert_yaxis()
+    figure.tight_layout()
     return figure

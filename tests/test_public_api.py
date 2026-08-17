@@ -100,6 +100,20 @@ _TASK18_EXPORTS = (
     "LifecycleMonitoringResult",
     "monitor_lifecycle",
 )
+_TASK19_EXPORTS = (
+    "GovernanceEvidenceRef",
+    "GovernanceCandidate",
+    "GovernanceCriterion",
+    "GovernanceExplanation",
+    "GovernanceAttributionEvidence",
+    "GovernancePredictionProfile",
+    "GovernancePerformanceEvidence",
+    "GovernanceMetadata",
+    "GovernancePolicy",
+    "GovernanceResult",
+    "evaluate_governance",
+    "plot_model_governance",
+)
 
 
 def test_task18_public_api_contract() -> None:
@@ -176,7 +190,9 @@ def test_all_contains_only_implemented_public_api() -> None:
     assert tuple(sharper.__all__[task15_end:task16_end]) == _TASK16_EXPORTS
     task17_end = task16_end + len(_TASK17_EXPORTS)
     assert tuple(sharper.__all__[task16_end:task17_end]) == _TASK17_EXPORTS
-    assert tuple(sharper.__all__[task17_end:]) == _TASK18_EXPORTS
+    task18_end = task17_end + len(_TASK18_EXPORTS)
+    assert tuple(sharper.__all__[task17_end:task18_end]) == _TASK18_EXPORTS
+    assert tuple(sharper.__all__[task18_end:]) == _TASK19_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
 
 

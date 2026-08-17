@@ -345,16 +345,23 @@ def _smoke_artifact(
             "import sharper; "
             "assert sharper.__version__ == '0.1.0'; "
             "assert set(sharper.__all__) <= set(vars(sharper)); "
-            "assert sharper.__all__[-18:-13] == ['DataAuditRoles', "
+            "assert sharper.__all__[-30:-25] == ['DataAuditRoles', "
             "'ColumnAuditRule', 'DataAuditConfig', 'DataAuditResult', "
             "'audit_data_quality']; "
-            "assert sharper.__all__[-13:-7] == ['StrategyCondition', "
+            "assert sharper.__all__[-25:-19] == ['StrategyCondition', "
             "'DecisionRule', 'DecisionConstraint', 'DecisionStrategyConfig', "
             "'DecisionStrategyResult', 'simulate_decision_strategy']; "
-            "assert sharper.__all__[-7:] == ['MonitoringCondition', "
+            "assert sharper.__all__[-19:-12] == ['MonitoringCondition', "
             "'EarlyWarningRule', 'WarningScenario', 'LifecycleState', "
             "'LifecycleMonitoringConfig', 'LifecycleMonitoringResult', "
             "'monitor_lifecycle']; "
+            "assert sharper.__all__[-12:] == ['GovernanceEvidenceRef', "
+            "'GovernanceCandidate', 'GovernanceCriterion', "
+            "'GovernanceExplanation', 'GovernanceAttributionEvidence', "
+            "'GovernancePredictionProfile', 'GovernancePerformanceEvidence', "
+            "'GovernanceMetadata', 'GovernancePolicy', 'GovernanceResult', "
+            "'evaluate_governance', 'plot_model_governance']; "
+            "import sharper.model_governance as governance; "
             "import sharper.lifecycle_monitoring as lifecycle; "
             "import matplotlib; "
             "from sharper import MonitoringCondition, EarlyWarningRule, "
@@ -362,6 +369,7 @@ def _smoke_artifact(
             "LifecycleState, LifecycleMonitoringConfig, LifecycleMonitoringResult, "
             "monitor_lifecycle; "
             "assert lifecycle.__file__.startswith('" + str(runtime_venv) + "'); "
+            "assert governance.__file__.startswith('" + str(runtime_venv) + "'); "
             "assert matplotlib.__file__.startswith('" + str(runtime_venv) + "'); "
             "assert all(hasattr(sharper, name) for name in "
             "('MonitoringCondition', 'EarlyWarningRule', 'WarningScenario', "
@@ -614,14 +622,16 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         assert "sharper/_condition_kernel.py" in names
         assert "sharper/decision_strategy.py" in names
         assert "sharper/lifecycle_monitoring.py" in names
+        assert "sharper/model_governance.py" in names
         metadata_name = next(
             name for name in names if name.endswith(".dist-info/METADATA")
         )
         wheel_metadata = _metadata(archive.read(metadata_name))
         _assert_metadata(wheel_metadata)
-        assert _requires_dist_hash(_requires_dist(wheel_metadata)) == prepared_manifest[
-            "requires_dist_sha256"
-        ]
+        assert (
+            _requires_dist_hash(_requires_dist(wheel_metadata))
+            == prepared_manifest["requires_dist_sha256"]
+        )
         assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
         entry_points = next(
             name for name in names if name.endswith(".dist-info/entry_points.txt")
@@ -636,6 +646,7 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         assert any(
             name.endswith("/src/sharper/lifecycle_monitoring.py") for name in names
         )
+        assert any(name.endswith("/src/sharper/model_governance.py") for name in names)
         assert any(
             name.endswith(
                 "/docs/decisions/task17-preloan-eligibility-strategy-contract.md"
@@ -648,9 +659,10 @@ def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
         package_info = next(name for name in names if name.endswith("/PKG-INFO"))
         sdist_metadata = _metadata(archive.extractfile(package_info).read())  # type: ignore[union-attr]
         _assert_metadata(sdist_metadata)
-        assert _requires_dist_hash(_requires_dist(sdist_metadata)) == prepared_manifest[
-            "requires_dist_sha256"
-        ]
+        assert (
+            _requires_dist_hash(_requires_dist(sdist_metadata))
+            == prepared_manifest["requires_dist_sha256"]
+        )
         pyproject = next(name for name in names if name.endswith("/pyproject.toml"))
         assert (
             'sharper = "sharper.cli:app"'

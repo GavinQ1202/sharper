@@ -248,6 +248,19 @@ ordinal 必须对齐。Summary resource gates 按 `monitoring_summary_rows` → 
 Task 18 implementation 状态为 `Implementation complete — review Go`；final validation 已完成。
 Task 18 contract 与 AM-04 均为 `Approved — Go`，package version 仍为 `0.1.0`，v0.2 尚未发布。
 
+## Opt-in 模型治理（Task 19）
+
+Task 19 提供 `evaluate_governance` 与 `plot_model_governance`，用于离线消费 Tasks 15--18
+的冻结结果以及调用者预先计算的结构化 attribution、prediction profile、performance evidence
+和 governance metadata。它输出解释、漂移、稳定性、candidate comparison、模拟 recommendation、
+metadata 与 provenance 十张有类型的表，并提供五种只读取结果表的 matplotlib 图。
+
+该能力不读取或执行模型，不自动 promotion、审批或部署，也不提供因果推断、法律公平认证或
+adverse-action notice。结构化 attribution 仅支持 coefficient direction、native importance 和
+预先计算的 holdout/OOF permutation importance。Task 19 implementation 已在 targeted remediation、bounded closure 与
+post-review final validation 后完成，当前为 `Implemented — Post-Review Closure Complete`；package version 仍为
+`0.1.0`，v0.2 尚未发布。
+
 ### Development environment
 
 This repository uses a uv-managed virtual environment at `.venv`.

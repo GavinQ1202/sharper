@@ -631,3 +631,36 @@ offline and opt-in, does not send notifications or execute account/collection
 actions, and does not integrate with the current workflow, report, or CLI. Its
 implementation is `Implementation complete — review Go`; final validation is complete;
 the package remains version `0.1.0` and v0.2 has not been released.
+
+## Offline model governance
+
+Task 19 adds ten frozen dataclasses plus `evaluate_governance` and
+`plot_model_governance`. The evaluator has this exact public shape:
+
+```python
+evaluate_governance(
+    policy,
+    *,
+    risk_validations=(),
+    data_audits=(),
+    decision_strategies=(),
+    lifecycle_monitorings=(),
+    model_attributions=(),
+    prediction_profiles=(),
+    performance_evidence=(),
+)
+```
+
+It returns `GovernanceResult` with exactly ten typed tables: `explanations`,
+`model_attributions`, `prediction_drift`, `performance_stability`,
+`candidate_comparisons`, `governance_evaluations`, `recommendations`,
+`governance_summary`, `governance_metadata`, and `provenance`. The plotting
+entry accepts only `importance`, `candidate_comparison`, `prediction_drift`,
+`performance_stability`, or `governance_summary`, returns a caller-owned
+matplotlib `Figure`, and reads only those materialized result tables.
+
+Task 19 is descriptive, offline governance analytics. It consumes frozen owner
+facts and bounded precomputed attribution/profile/performance declarations; it
+does not inspect or execute a model, automatically promote or deploy a candidate,
+or make causal, legal-fairness, or adverse-action claims. Its implementation is
+`Implemented — Post-Review Closure Complete`; package version remains `0.1.0` and v0.2 is not released.
