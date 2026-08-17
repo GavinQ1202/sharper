@@ -1,9 +1,9 @@
 # Task 20 — v0.2 Integration and Release Readiness 精确合同
 
-**Contract 状态：Approved — Go。**
+**Contract 状态：Approved — Go as amended by Governance Amendments A1 + A2。**
 **Implementation 状态：Not Started。**
 **Full Contract Review：NO-GO — Permanently Closed。**
-**Full Implementation Review：Not Applicable — Implementation Not Started。**
+**Full Implementation Review：Not Yet Executed — Implementation Not Started — quota 1 available。**
 
 本记录是 Task 20 的冻结合同、C1–C4 targeted fix history 与 post-closure governance
 status sync。合同治理现为 **Complete**，Task20 implementation 仍为 **Not Started**，
@@ -1415,7 +1415,7 @@ Contract Review, and does not consume the Full Implementation Review quota.
 The original approved contract checkpoint remains preserved at
 `4a6fec677fab5b152efc4dbf0a15c805da469bb1`. The A1 amendment changes the implementation
 allowlist from 31 to 32 exact tracked paths and the I6 scope from 12 to 13 exact tracked
-files. The amended I6 scope is exactly:
+files. The A1-era amended I6 scope was exactly:
 
 1. `src/sharper/__init__.py`
 2. `tests/test_v02_compatibility.py`
@@ -1436,6 +1436,69 @@ I6 remains not started, release remains not released, and no implementation or t
 modified by this amendment. After the A1 checkpoint, the next and only implementation stage
 is `TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE
 READINESS`.
+
+### 13.7 Governance Amendment A2 — I6 post-transition documentation truth scope
+
+The I6 preflight established a bounded documentation truth conflict. Once the approved I6
+transition changes package metadata from `0.1.0` to `0.2.0`, activates the nine Task20 root
+exports, creates the five Task20 examples, and completes distribution and CI readiness
+evidence, six I5 documents contain unconditional current-state claims that would become
+false. Those documents are already inside the 32-entry global Task20 implementation
+allowlist, but they were outside the A1-era 13-file I6 scope.
+
+Governance Amendment A2 is an I6 wave-scope correction only. It does not expand the global
+implementation allowlist, which remains exactly 32 paths. It changes the I6 exact scope from
+13 to 19 by adding exactly these six existing allowlisted paths:
+
+1. `README.md`
+2. `docs/quickstart.md`
+3. `docs/analysis-guide.md`
+4. `docs/api.md`
+5. `docs/v02-integration-guide.md`
+6. `docs/release-readiness.md`
+
+The six documents receive only post-transition truth-maintenance edits: current version,
+root-export activation, Task20 completion, example availability, distribution/CI readiness
+and release-state facts. A2 does not authorize tutorial rewrites, new API or CLI options,
+JSON grammar changes, report-semantic changes, new examples, or unrelated v0.1 edits.
+`docs/leakage.md` is explicitly excluded because the preflight found no unconditional
+current-state claim that the I6 version/export/readiness transition would invalidate.
+
+A2 preserves the A1 narrow authorization for `tests/test_cli.py`: only the two root version
+expected literals may change from `sharper 0.1.0` to `sharper 0.2.0`. A2 changes no runtime,
+public API, error, resource, schema, report or CLI contract; creates no finding; reopens no
+review; and consumes no Full Implementation Review quota. The I5 checkpoint
+`7af8f212312c28617f7d357a77b8eb9fb0f7a1a9` remains historically complete and accurate for
+the state at which it was created. I5 is not failed, incomplete or reopened. I1–I5 remain
+COMPLETE and I6 remains NOT STARTED until the A2 checkpoint exists.
+
+The final I6 exact scope after A2 is:
+
+1. `src/sharper/__init__.py`
+2. `tests/test_v02_compatibility.py`
+3. `tests/test_public_api.py`
+4. `tests/test_distribution.py`
+5. `tests/test_cli.py`
+6. `examples/v02_score_validation.py`
+7. `examples/v02_preloan.py`
+8. `examples/v02_postloan.py`
+9. `examples/v02_combined_report.py`
+10. `examples/v02_cli_json.py`
+11. `.github/workflows/ci.yml`
+12. `CHANGELOG.md`
+13. `pyproject.toml`
+14. `README.md`
+15. `docs/quickstart.md`
+16. `docs/analysis-guide.md`
+17. `docs/api.md`
+18. `docs/v02-integration-guide.md`
+19. `docs/release-readiness.md`
+
+I6 sequencing is frozen as: complete the version, root-surface, examples, distribution and
+CI implementation; obtain the corresponding evidence; perform the six authorized
+post-transition truth-sync edits; run the post-I6 documentation truth scan; then execute
+the final tests, build, examples, distribution and A–X gates. If I6 fails before completion,
+the six documents must not be written as if all readiness gates passed.
 
 ## 14. CI and distribution readiness matrix
 
@@ -1731,7 +1794,7 @@ Current state is frozen as:
 
 ```text
 Task20 title:                 Task 20 — v0.2 Integration and Release Readiness
-Contract:                     Approved — Go as amended by A1
+Contract:                     Approved — Go as amended by A1 + A2
 Contract governance:          Complete
 Implementation:               Not Started
 I1–I5:                        Complete
@@ -1748,7 +1811,10 @@ C3 finding status:            T20-CR-09..12 CLOSED
 C4 finding status:            T20-CR-13..15 CLOSED
 Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
 Approved checkpoint:          Original three-document commit preserved
-Amended A1 checkpoint:         This exact Governance Amendment A1 commit
+Amended A1 checkpoint:         d0ced4a11257423bc11c442462cd3fff8d000656
+Amended A2 checkpoint:         This exact Governance Amendment A2 commit
+Global implementation allowlist: 32
+I6 exact scope:                19
 Second Full Contract Review:  Forbidden
 Next stage:                   TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS
 ```

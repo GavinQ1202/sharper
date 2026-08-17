@@ -926,7 +926,7 @@ evaluation/recommendation/summary maxima分别为15/960/960/15/16，provenance�
 
 ### Task 20 contract stage
 
-**状态：Approved — Go as amended by Governance Amendment A1；Contract Governance Complete；Full Contract Review NO-GO — Permanently Closed；Implementation Not Started；I6 Not Started；Task20 Ready for I6。**
+**状态：Approved — Go as amended by Governance Amendments A1 + A2；Contract Governance Complete；Full Contract Review NO-GO — Permanently Closed；Implementation Not Started；I6 Not Started；Task20 Ready for I6。**
 
 **合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
@@ -962,11 +962,21 @@ approved docs、decisions、tests、CHANGELOG、license、README 与七个 examp
 禁止缓存、生成物、notebooks、内部机器文件、credentials 和发布配置。
 
 唯一一次 Full Contract Review 已以`NO-GO — Permanently Closed`结束，第二次 Full Contract
-Review 被禁止。Governance Amendment A1 仅修正 I6 的 implementation allowlist：现有
+Review 被禁止。Governance Amendment A1 历史上仅修正 I6 的 implementation allowlist：现有
 root `--version` regression test `tests/test_cli.py` 因唯一版本源从 `0.1.0` 转换为
 `0.2.0` 需要更新 expected literal；A1 将总 allowlist 从 31 增至 32，并将 I6 scope
 从 12 增至 13。A1 不改变 runtime/API/error/resource/report/JSON/CLI 语义，不创建或重开
 Full Contract Review finding，也不消费 Full Implementation Review quota。
+
+Governance Amendment A2 仅修正 I6 的 post-transition documentation truth-maintenance
+scope。I6 完成 `0.1.0→0.2.0`、九个 root exports、五个 Task20 examples、distribution 与
+CI readiness transition 后，README、quickstart、analysis guide、API reference、v0.2
+integration guide 和 release-readiness guide 中的六类 unconditional current-state claims
+必须同步更新。A2 不扩大 32-entry global implementation allowlist；仅将已在该 allowlist
+中的六个路径加入 I6 narrow scope，使 I6 exact scope 从 13 增至 19。`docs/leakage.md`
+未发现该类必然 stale claim，继续保持 I6 immutable。A2 不改变 runtime/API/error/resource/
+schema/report/CLI 语义，不创建或重开 finding，不重新执行任何 Full Review，也不消费
+Full Implementation Review quota。
 
 当前 C1 的 `T20-CR-01..05`、C2 的 `T20-CR-06..08`、C3 的
 `T20-CR-09..12` 与 C4 的 `T20-CR-13..15` 均为`CLOSED`，bounded contract closure 为
@@ -976,16 +986,19 @@ implementation kickoff。Task20 不扩充
 Tasks 15--19 facts，不新增 mandatory dependency，也不 tag/push/upload/创建 release 或
 实际发布。
 
-**下一阶段：** TASK20 IMPLEMENTATION — WAVE I6。第二次 Full Contract Review：Forbidden。
+**下一阶段：** TASK20 IMPLEMENTATION — WAVE I6。I6 exact scope 为 19 个文件，包含 A2
+授权的六个 post-transition truth-sync 文档。第二次 Full Contract Review：Forbidden。
 
 ```text
-Contract Governance:          Complete — Approved — Go as amended by A1
+Contract Governance:          Complete — Approved — Go as amended by A1 + A2
 Bounded Contract Closure:     PASS (15 CLOSED / 0 OPEN)
 Approved Contract Checkpoint: Original three-document commit 4a6fec677fab5b152efc4dbf0a15c805da469bb1
-Amended Contract Checkpoint:   This exact Governance Amendment A1 commit
+Amended Contract Checkpoint:   A1 commit d0ced4a11257423bc11c442462cd3fff8d000656
+A2 Checkpoint:                 This exact Governance Amendment A2 commit
 Current Package Version:      0.1.0
 Implementation Target:        0.2.0
-I6 Scope:                     13 exact tracked files, including tests/test_cli.py
+Global Implementation Allowlist: 32 exact tracked files
+I6 Scope:                     19 exact tracked files, including six A2 docs
 Task20 Release Goal:          Release Ready — Not Released
 ```
 
