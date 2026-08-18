@@ -5,8 +5,9 @@ results. It adds typed orchestration, closed JSON carriers for Task 17/18
 specifications, static reports, and the `v02-run` command while preserving the
 v0.1 workflow and CLI.
 
-The approved v0.2 surface is documented here. The current package remains
-version `0.1.0`; the v0.2 target is `0.2.0`, and v0.2 is not released.
+The approved v0.2 surface is active in the current package version `0.2.0`.
+Task 20 remains opt-in; the final implementation review is pending and v0.2
+is not released.
 
 ## Architecture
 
@@ -77,11 +78,10 @@ request = V02WorkflowRequest(
 result = run_v02_workflow(request)
 ```
 
-The Task20 names become active root exports only at the final public-surface
-gate. This documentation describes the approved final surface and does not
-claim that the current `0.1.0` root package already exposes these nine names.
+The nine Task20 names are active root exports in the current `0.2.0` package.
 The internal JSON adapters are carriers for the CLI, not additional public
-symbols.
+symbols. The root surface remains additive and the v0.1 workflow/CLI contract
+is preserved.
 
 ### Score validation
 

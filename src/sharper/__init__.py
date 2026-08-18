@@ -82,6 +82,17 @@ from sharper.risk_validation import (
 )
 from sharper.schema import ColumnSchema, SchemaReport, TargetCandidate, infer_schema
 from sharper.summary import DataFrameSummary, summarize_dataframe
+from sharper.v02_reporting import generate_v02_report
+from sharper.v02_workflow import (
+    V02AuditRequest,
+    V02GovernanceRequest,
+    V02PostLoanRequest,
+    V02PreLoanRequest,
+    V02ScoreValidationRequest,
+    V02WorkflowRequest,
+    V02WorkflowResult,
+    run_v02_workflow,
+)
 from sharper.visualization import (
     PlotCollection,
     PlotResult,
@@ -98,7 +109,7 @@ from sharper.visualization import (
 )
 from sharper.workflow import AnalysisRun, run_analysis
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
@@ -188,4 +199,13 @@ __all__ = [
     "GovernanceResult",
     "evaluate_governance",
     "plot_model_governance",
+    "V02ScoreValidationRequest",
+    "V02AuditRequest",
+    "V02PreLoanRequest",
+    "V02PostLoanRequest",
+    "V02GovernanceRequest",
+    "V02WorkflowRequest",
+    "V02WorkflowResult",
+    "run_v02_workflow",
+    "generate_v02_report",
 ]

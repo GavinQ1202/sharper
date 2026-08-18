@@ -21,7 +21,7 @@ def test_help_and_version() -> None:
     assert runner.invoke(app, ["--help"]).exit_code == 0
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout == "sharper 0.1.0\n"
+    assert result.stdout == "sharper 0.2.0\n"
 
 
 def test_csv_success_and_html_bundle(tmp_path: Path) -> None:
@@ -72,7 +72,7 @@ def test_module_root_version_is_eager(arguments: list[str]) -> None:
         check=False,
     )
     assert result.returncode == 0
-    assert result.stdout == "sharper 0.1.0\n"
+    assert result.stdout == "sharper 0.2.0\n"
     assert result.stderr == ""
 
 

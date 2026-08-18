@@ -48,6 +48,47 @@ path = "src/sharper/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sharper"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "/CHANGELOG.md",
+  "/LICENSE",
+  "/README.md",
+  "/docs/analysis-guide.md",
+  "/docs/api.md",
+  "/docs/decisions/*.md",
+  "/docs/leakage.md",
+  "/docs/quickstart.md",
+  "/docs/release-readiness.md",
+  "/docs/v02-integration-guide.md",
+  "/examples/baseline_modeling.py",
+  "/examples/basic_analysis.py",
+  "/examples/v02_cli_json.py",
+  "/examples/v02_combined_report.py",
+  "/examples/v02_postloan.py",
+  "/examples/v02_preloan.py",
+  "/examples/v02_score_validation.py",
+  "/pyproject.toml",
+  "/src/sharper/**/*.py",
+  "/tests/**/*.py",
+]
+exclude = [
+  "/.DS_Store",
+  "/**/.DS_Store",
+  "/**/__pycache__/**",
+  "/**/*.pyc",
+  "/.agents/**",
+  "/.codex/**",
+  "/.github/**",
+  "/AGENTS.md",
+  "/IMPLEMENTATION_PLAN.md",
+  "/SPEC.md",
+  "/artifacts/**",
+  "/dist/**",
+  "/docs/research/**",
+  "/notebooks/**",
+  "/scripts/**",
+]
+
 [tool.pytest.ini_options]
 addopts = "--strict-markers --tb=short"
 testpaths = ["tests"]

@@ -25,5 +25,16 @@ jobs:
       - run: python -m pytest
       - run: python -m ruff check .
       - run: python -m ruff format --check .
+      - name: Task20 public surface and CLI gate
+        run: |
+          python -c "import sharper; assert sharper.__version__ == '0.2.0'; assert sharper.__all__[-9:] == ['V02ScoreValidationRequest', 'V02AuditRequest', 'V02PreLoanRequest', 'V02PostLoanRequest', 'V02GovernanceRequest', 'V02WorkflowRequest', 'V02WorkflowResult', 'run_v02_workflow', 'generate_v02_report']"
+          python -m sharper.cli v02-run --help
+      - name: Task20 example smoke
+        run: |
+          python examples/v02_score_validation.py
+          python examples/v02_preloan.py
+          python examples/v02_postloan.py
+          python examples/v02_combined_report.py
+          python examples/v02_cli_json.py
       - if: matrix.python-version == '3.12'
         run: python -m build --no-isolation

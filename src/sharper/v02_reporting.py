@@ -800,7 +800,7 @@ def _validate_path_status(result: V02WorkflowResult) -> None:
     for row, path_key in zip(table.itertuples(index=False, name=None), _PATH_ORDER):
         if (
             row[0] != path_key
-            or type(row[1]) is not bool
+            or type(row[1]) not in (bool, np.bool_)
             or row[1] != expected_enabled[path_key]
         ):
             _report_error("result")

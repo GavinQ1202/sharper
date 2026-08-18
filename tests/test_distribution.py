@@ -22,7 +22,7 @@ PROJECT_VENV = (PROJECT_ROOT / ".venv").resolve()
 PROJECT_PYTHON = PROJECT_VENV / (
     "Scripts/python.exe" if os.name == "nt" else "bin/python"
 )
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 OFFLINE_CACHE_ENV = "SHARPER_DISTRIBUTION_OFFLINE_CACHE_ROOT"
 OFFLINE_CACHE_FORMAT = 1
 
@@ -343,24 +343,28 @@ def _smoke_artifact(
             str(python),
             "-c",
             "import sharper; "
-            "assert sharper.__version__ == '0.1.0'; "
+            "assert sharper.__version__ == '0.2.0'; "
             "assert set(sharper.__all__) <= set(vars(sharper)); "
-            "assert sharper.__all__[-30:-25] == ['DataAuditRoles', "
+            "assert sharper.__all__[-39:-34] == ['DataAuditRoles', "
             "'ColumnAuditRule', 'DataAuditConfig', 'DataAuditResult', "
             "'audit_data_quality']; "
-            "assert sharper.__all__[-25:-19] == ['StrategyCondition', "
+            "assert sharper.__all__[-34:-28] == ['StrategyCondition', "
             "'DecisionRule', 'DecisionConstraint', 'DecisionStrategyConfig', "
             "'DecisionStrategyResult', 'simulate_decision_strategy']; "
-            "assert sharper.__all__[-19:-12] == ['MonitoringCondition', "
+            "assert sharper.__all__[-28:-21] == ['MonitoringCondition', "
             "'EarlyWarningRule', 'WarningScenario', 'LifecycleState', "
             "'LifecycleMonitoringConfig', 'LifecycleMonitoringResult', "
             "'monitor_lifecycle']; "
-            "assert sharper.__all__[-12:] == ['GovernanceEvidenceRef', "
+            "assert sharper.__all__[-21:-9] == ['GovernanceEvidenceRef', "
             "'GovernanceCandidate', 'GovernanceCriterion', "
             "'GovernanceExplanation', 'GovernanceAttributionEvidence', "
             "'GovernancePredictionProfile', 'GovernancePerformanceEvidence', "
             "'GovernanceMetadata', 'GovernancePolicy', 'GovernanceResult', "
             "'evaluate_governance', 'plot_model_governance']; "
+            "assert sharper.__all__[-9:] == ['V02ScoreValidationRequest', "
+            "'V02AuditRequest', 'V02PreLoanRequest', 'V02PostLoanRequest', "
+            "'V02GovernanceRequest', 'V02WorkflowRequest', 'V02WorkflowResult', "
+            "'run_v02_workflow', 'generate_v02_report']; "
             "import sharper.model_governance as governance; "
             "import sharper.lifecycle_monitoring as lifecycle; "
             "import matplotlib; "
@@ -453,13 +457,28 @@ def _smoke_artifact(
     ):
         assert command[0] in {str(console), str(python)}
         result = _run(command, cwd=cwd, environment=environment)
-        assert result.stdout == "sharper 0.1.0\n"
+        assert result.stdout == "sharper 0.2.0\n"
 
     analyze = [str(console), "analyze", str(csv_path), "--output", str(report_path)]
     assert analyze[0] == str(console)
     _run(analyze, cwd=cwd, environment=environment)
     assert report_path.exists()
     assert report_path.with_name(f"{report_path.stem}_assets").is_dir()
+    v02_report_path = report_path.with_name("v02-cli.md")
+    _run(
+        [
+            str(console),
+            "v02-run",
+            str(csv_path),
+            "--output",
+            str(v02_report_path),
+            "--audit",
+        ],
+        cwd=cwd,
+        environment=environment,
+    )
+    assert v02_report_path.exists()
+    assert v02_report_path.with_name("v02-cli_assets").is_dir()
 
 
 def _wheel_api_smoke(
@@ -563,7 +582,16 @@ def _run_sdist_examples(
     runner = cwd / "example-runner"
     runner.mkdir()
     output_dir.mkdir()
-    for name in ("basic_analysis.py", "baseline_modeling.py"):
+    example_names = (
+        "basic_analysis.py",
+        "baseline_modeling.py",
+        "v02_score_validation.py",
+        "v02_preloan.py",
+        "v02_postloan.py",
+        "v02_combined_report.py",
+        "v02_cli_json.py",
+    )
+    for name in example_names:
         shutil.copy2(source_root / "examples" / name, runner / name)
 
     for script, report in (
@@ -585,6 +613,31 @@ def _run_sdist_examples(
         assert list(assets.glob("*.png"))
         assert not list(destination.glob(".*.sharper-staging"))
         assert not list(destination.glob(".*.sharper-backup"))
+
+    for script in (
+        "v02_score_validation.py",
+        "v02_preloan.py",
+        "v02_postloan.py",
+        "v02_cli_json.py",
+    ):
+        _run(
+            [str(python), str(runner / script)],
+            cwd=cwd,
+            environment=_runtime_environment(runtime_venv, uv_cache_dir=uv_cache_dir),
+        )
+    combined_output = output_dir / "v02-combined"
+    _run(
+        [
+            str(python),
+            str(runner / "v02_combined_report.py"),
+            "--output-dir",
+            str(combined_output),
+        ],
+        cwd=cwd,
+        environment=_runtime_environment(runtime_venv, uv_cache_dir=uv_cache_dir),
+    )
+    assert (combined_output / "v02-combined.md").is_file()
+    assert (combined_output / "v02-combined_assets").is_dir()
 
 
 def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:

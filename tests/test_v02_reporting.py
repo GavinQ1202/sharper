@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import fields, replace
+from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 from matplotlib.figure import Figure
 
 import sharper.v02_reporting as reporting
+from sharper.decision_strategy import DecisionStrategyConfig
 from sharper.risk_validation import BinaryRiskValidationResult
-from sharper.v02_workflow import V02WorkflowResult
+from sharper.v02_workflow import (
+    V02PreLoanRequest,
+    V02WorkflowRequest,
+    V02WorkflowResult,
+    run_v02_workflow,
+)
 
 
 def _empty_instance(cls):
@@ -80,6 +88,53 @@ def _empty_score() -> BinaryRiskValidationResult:
             "provenance": reporting._OWNER_PROVENANCE_COLUMNS,
         },
     )
+
+
+def _real_preloan_result() -> tuple[pd.DataFrame, V02WorkflowResult]:
+    data = pd.DataFrame({"x": [1, 2]})
+    config = DecisionStrategyConfig(
+        "a3",
+        "v1",
+        datetime(2025, 1, 1),
+        None,
+        datetime(2025, 1, 2),
+        (),
+        "review",
+        "review",
+        (("review", "review"),),
+    )
+    result = run_v02_workflow(
+        V02WorkflowRequest(data, preloan=V02PreLoanRequest(config))
+    )
+    return data, result
+
+
+def test_v02_report_accepts_real_workflow_path_status(tmp_path: Path) -> None:
+    data, result = _real_preloan_result()
+    data_before = data.copy(deep=True)
+    path_status_before = result.path_status.copy(deep=True)
+
+    artifact = reporting.generate_v02_report(result, tmp_path / "real.md")
+
+    assert artifact.path.is_file()
+    assert "Path Status" in artifact.path.read_text()
+    pd.testing.assert_frame_equal(data, data_before)
+    pd.testing.assert_frame_equal(result.path_status, path_status_before)
+
+
+@pytest.mark.parametrize("invalid", [0, 1.0, "true", None, pd.NA, np.int64(1)])
+def test_v02_report_rejects_invalid_path_status_enabled_scalar(
+    tmp_path: Path, invalid: object
+) -> None:
+    _, result = _real_preloan_result()
+    path_status = result.path_status.copy(deep=True)
+    path_status["enabled"] = pd.Series(
+        [invalid, False, False, False, False], dtype="object"
+    )
+    invalid_result = replace(result, path_status=path_status)
+
+    with pytest.raises(ValueError, match=r"^sharper task20: report_result$"):
+        reporting.generate_v02_report(invalid_result, tmp_path / "invalid.md")
 
 
 def test_v02_report_sections_and_semantic_parity(tmp_path: Path) -> None:

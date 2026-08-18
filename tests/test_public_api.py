@@ -1,19 +1,25 @@
 """Smoke tests for the public import contract."""
 
 import inspect
+import os
+import subprocess
+import sys
 from collections.abc import Sequence
 from dataclasses import MISSING, fields, is_dataclass
 from datetime import date, datetime, timedelta
 from importlib.metadata import entry_points
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Literal, get_type_hints
 
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
 from sklearn.base import ClassifierMixin, RegressorMixin
+from typer.testing import CliRunner
 
 import sharper
+from sharper.cli import app
 
 _V01_EXPORTS = (
     "__version__",
@@ -114,6 +120,17 @@ _TASK19_EXPORTS = (
     "evaluate_governance",
     "plot_model_governance",
 )
+_TASK20_EXPORTS = (
+    "V02ScoreValidationRequest",
+    "V02AuditRequest",
+    "V02PreLoanRequest",
+    "V02PostLoanRequest",
+    "V02GovernanceRequest",
+    "V02WorkflowRequest",
+    "V02WorkflowResult",
+    "run_v02_workflow",
+    "generate_v02_report",
+)
 
 
 def test_task18_public_api_contract() -> None:
@@ -166,8 +183,8 @@ def test_task18_public_api_contract() -> None:
 
 
 def test_version_contract() -> None:
-    """The package exposes its initial version."""
-    assert sharper.__version__ == "0.1.0"
+    """The package exposes the approved Task 20 target version."""
+    assert sharper.__version__ == "0.2.0"
 
 
 def test_console_entry_point_contract() -> None:
@@ -192,8 +209,137 @@ def test_all_contains_only_implemented_public_api() -> None:
     assert tuple(sharper.__all__[task16_end:task17_end]) == _TASK17_EXPORTS
     task18_end = task17_end + len(_TASK18_EXPORTS)
     assert tuple(sharper.__all__[task17_end:task18_end]) == _TASK18_EXPORTS
-    assert tuple(sharper.__all__[task18_end:]) == _TASK19_EXPORTS
+    task19_end = task18_end + len(_TASK19_EXPORTS)
+    assert tuple(sharper.__all__[task18_end:task19_end]) == _TASK19_EXPORTS
+    assert tuple(sharper.__all__[task19_end:]) == _TASK20_EXPORTS
     assert all(not name.startswith("_types") for name in sharper.__all__)
+
+
+def test_v02_public_symbols_signatures_and_fields() -> None:
+    """Task 20 exposes exactly the frozen carrier fields and function signatures."""
+    expected_fields = {
+        sharper.V02ScoreValidationRequest: (
+            "target",
+            "config",
+            "positive_label",
+            "estimator",
+            "external_predictions",
+            "features",
+            "exclude_columns",
+        ),
+        sharper.V02AuditRequest: ("reference", "roles", "config"),
+        sharper.V02PreLoanRequest: ("config",),
+        sharper.V02PostLoanRequest: ("config",),
+        sharper.V02GovernanceRequest: (
+            "policy",
+            "model_attributions",
+            "prediction_profiles",
+            "performance_evidence",
+        ),
+        sharper.V02WorkflowRequest: (
+            "data",
+            "score_validation",
+            "audit",
+            "preloan",
+            "postloan",
+            "governance",
+        ),
+        sharper.V02WorkflowResult: (
+            "contract_version",
+            "enabled_paths",
+            "path_status",
+            "call_trace",
+            "score_validation",
+            "data_audit",
+            "preloan",
+            "postloan",
+            "governance",
+            "warnings",
+            "limitations",
+        ),
+    }
+    for data_type, names in expected_fields.items():
+        assert is_dataclass(data_type)
+        assert data_type.__dataclass_params__.frozen is True
+        assert tuple(field.name for field in fields(data_type)) == names
+        assert data_type.__doc__
+    assert str(inspect.signature(sharper.run_v02_workflow)) == (
+        "(request: 'V02WorkflowRequest') -> 'V02WorkflowResult'"
+    )
+    assert str(inspect.signature(sharper.generate_v02_report)) == (
+        "(result: 'V02WorkflowResult', output_path: 'str | Path', *, "
+        "title: 'str' = 'Sharper v0.2 Integration Report', "
+        "format: \"Literal['markdown', 'html']\" = 'markdown', "
+        "overwrite: 'bool' = True) -> 'ReportArtifact'"
+    )
+
+
+def test_current_release_surface_appends_task20() -> None:
+    """The current surface is the permanent prefix plus the exact Task 20 suffix."""
+    assert tuple(sharper.__all__[-len(_TASK20_EXPORTS) :]) == _TASK20_EXPORTS
+    assert all(hasattr(sharper, name) for name in _TASK20_EXPORTS)
+    assert len(sharper.__all__) == sum(
+        len(exports)
+        for exports in (
+            _V01_EXPORTS,
+            _TASK15_EXPORTS,
+            _TASK16_EXPORTS,
+            _TASK17_EXPORTS,
+            _TASK18_EXPORTS,
+            _TASK19_EXPORTS,
+            _TASK20_EXPORTS,
+        )
+    )
+
+
+def test_v02_version_transition_gate() -> None:
+    """The source version and root CLI report the same approved target."""
+    result = CliRunner().invoke(app, ["--version"])
+    assert sharper.__version__ == "0.2.0"
+    assert result.exit_code == 0
+    assert result.stdout == "sharper 0.2.0\n"
+
+
+def test_v02_examples_and_documentation_smoke() -> None:
+    """The five examples run externally and the six authorized docs are current."""
+    root = Path(__file__).parents[1]
+    examples = (
+        "v02_score_validation.py",
+        "v02_preloan.py",
+        "v02_postloan.py",
+        "v02_combined_report.py",
+        "v02_cli_json.py",
+    )
+    with TemporaryDirectory(prefix="sharper-v02-public-") as directory:
+        environment = os.environ.copy()
+        environment["MPLCONFIGDIR"] = str(Path(directory) / "mpl")
+        for name in examples:
+            result = subprocess.run(
+                [sys.executable, str(root / "examples" / name)],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == 0, result.stderr or result.stdout
+            assert "Traceback" not in result.stderr
+    required_docs = (
+        "README.md",
+        "docs/quickstart.md",
+        "docs/analysis-guide.md",
+        "docs/api.md",
+        "docs/v02-integration-guide.md",
+        "docs/release-readiness.md",
+    )
+    for name in required_docs:
+        content = (root / name).read_text()
+        assert content
+        assert "0.2.0" in content
+    assert (
+        "Release Ready — Not Released"
+        in (root / "docs/release-readiness.md").read_text()
+    )
 
 
 def test_task18_api_documentation_matches_frozen_inventory() -> None:

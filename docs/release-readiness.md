@@ -8,17 +8,18 @@ package.
 
 | Item | Current fact | Final target or gate |
 | --- | --- | --- |
-| Package version | `0.1.0` | `0.2.0` metadata only after the public-surface gate |
+| Package version | `0.2.0` source and metadata | Wheel/sdist/runtime parity remains required |
 | v0.1 compatibility | Existing workflow, report, CLI, result fields, defaults, and exports remain the compatibility baseline | Full regression evidence remains required |
-| Task20 workflow | Typed opt-in orchestration is implemented | Public release surface must be activated and verified |
+| Task20 workflow | Typed opt-in orchestration and I6 integration are implemented | Final implementation review and closure |
 | Task20 JSON | `task20.policy.v1` and `task20.warning.v1` adapters are implemented | Closed-schema parity and clean-install evidence |
 | Task20 CLI | `sharper v02-run` is implemented | CLI smoke and distribution evidence |
-| Task20 root exports | The nine Task20 symbols are not yet active in the current `0.1.0` root surface | Exact ordered exports are a final public-surface gate |
-| Examples | The five approved v0.2 example files are not yet part of this checkpoint | Create, run, and validate them as a final gate |
-| Distribution/CI | Final v0.2 distribution and CI readiness evidence is not complete | Build, install, artifact, and CI gates |
+| Task20 root exports | Nine exact symbols are active in the `0.2.0` root surface | Permanent v0.1 compatibility remains required |
+| Examples | All five approved v0.2 example files exist and run with synthetic inputs | Repeat in final matrix/distribution evidence |
+| Distribution/CI | `0.2.0` wheel/sdist build and additive CI gates are implemented | Controlled clean-install and final review evidence |
 | Release action | No tag, push, upload, publish, or release has occurred | Remains prohibited until separately authorized |
 
-The current terminal claim is `Not Released`. The approved eventual terminal
+The current terminal claim is `Implementation Complete — Full Implementation Review Pending; Not Released`.
+The approved eventual terminal
 wording is `Release Ready — Not Released`: it means the release gates have
 been validated while no release action has been performed. The documentation
 checkpoint itself does not claim that all readiness gates have passed.
@@ -35,8 +36,7 @@ checkpoint itself does not claim that all readiness gates have passed.
 - Root imports, signatures, field order, defaults, and docs agree with the
   approved public surface.
 - Version metadata, artifact names, and runtime `__version__` agree on the
-  authorized target `0.2.0`. The current checkpoint must continue to report
-  `0.1.0` until that gate is completed.
+  authorized target `0.2.0`; the final implementation review remains required.
 
 ### Compatibility and behavior
 
@@ -94,8 +94,8 @@ examples/v02_cli_json.py
 
 Examples must use only the approved public API, use synthetic or illustrative
 inputs, disclose that policy/alert outputs are offline evidence, and run
-deterministically. Their creation and smoke validation are final release gates;
-they are not part of this documentation-only checkpoint.
+deterministically. Their creation and smoke validation are implementation
+evidence; the final matrix and implementation review remain required.
 
 ### CI and offline evidence
 
@@ -108,9 +108,10 @@ changes, credentials, and publishing permissions are not release artifacts.
 
 ## Release boundary
 
-Task20 reaches release readiness only after the gates above and the approved
-contract checklist are satisfied. Readiness does not perform any external
-action. The following remain outside this task's release-readiness operation:
+Task20 reaches release readiness only after the gates above, the approved
+contract checklist, and the final implementation review are satisfied.
+Readiness does not perform any external action. The following remain outside
+this task's release-readiness operation:
 
 ```text
 git push
@@ -121,6 +122,5 @@ publishing
 deployment
 ```
 
-No documentation in this repository should describe `0.2.0` as installed,
-released, published, deployed, production-ready, or distribution-validated
-before the corresponding final evidence exists.
+The source and metadata target is `0.2.0`; this document makes no claim of a
+published, deployed, production-ready, or externally released package.

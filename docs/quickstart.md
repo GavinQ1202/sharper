@@ -81,10 +81,8 @@ result = run_v02_workflow(request)
 `score_config` and `external_predictions` above are caller-created approved
 Task 15 objects. The same request carrier can opt into `audit`, `preloan`,
 `postloan`, and `governance` with their corresponding typed requests. These
-Task 20 names become part of the root release surface only after the final
-public-surface gate; the current package is still version `0.1.0`, so this
-snippet documents the approved v0.2 API rather than claiming current root
-imports are active.
+The nine Task 20 names are active root exports in package version `0.2.0`.
+Task 20 remains opt-in, and the package has not been released or deployed.
 
 The CLI path is explicit and uses only the frozen options:
 

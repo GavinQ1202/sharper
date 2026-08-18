@@ -478,7 +478,7 @@ The exact signatures, dataclass fields, table schemas, status/reason vocabulary,
 mathematics, errors, and ownership boundaries are frozen in the
 [Task 15 contract](decisions/task15-binary-risk-validation-contract.md). Task 15
 does not add workflow/report/CLI integration, policy actions, calibration model
-fitting, or automatic cutoff selection. The package version remains `0.1.0`;
+fitting, or automatic cutoff selection. The package version is `0.2.0`;
 v0.2 as a whole has not been released.
 
 ## Data quality and leakage audit
@@ -508,7 +508,7 @@ limitations. Evidence status is closed to `available`, `unavailable`,
 are not returned; provenance is sanitized and fingerprinted. The shared
 condition kernel remains private. Task 16 does not clean data, train a model,
 execute policy, or integrate with the current workflow, report, or CLI. The
-package remains version `0.1.0`, and v0.2 has not been released.
+package is version `0.2.0`, and v0.2 has not been released.
 
 ## Decision-strategy simulation
 
@@ -585,7 +585,7 @@ vocabulary, resource limits, and errors are frozen in the
 [Task 17 contract](decisions/task17-preloan-eligibility-strategy-contract.md).
 Task 17 is an offline simulation only: it does not execute approvals, optimize a
 policy, choose a winner, or integrate with the current workflow, report, or CLI.
-The package remains version `0.1.0`, and v0.2 has not been released.
+The package is version `0.2.0`, and v0.2 has not been released.
 
 ## Post-loan early warning and lifecycle monitoring
 
@@ -630,7 +630,7 @@ Summary resource gates run in the frozen order
 offline and opt-in, does not send notifications or execute account/collection
 actions, and does not integrate with the current workflow, report, or CLI. Its
 implementation is `Implementation complete — review Go`; final validation is complete;
-the package remains version `0.1.0` and v0.2 has not been released.
+the package is version `0.2.0` and v0.2 has not been released.
 
 ## Offline model governance
 
@@ -663,14 +663,13 @@ Task 19 is descriptive, offline governance analytics. It consumes frozen owner
 facts and bounded precomputed attribution/profile/performance declarations; it
 does not inspect or execute a model, automatically promote or deploy a candidate,
 or make causal, legal-fairness, or adverse-action claims. Its implementation is
-`Implemented — Post-Review Closure Complete`; package version remains `0.1.0` and v0.2 is not released.
+`Implemented — Post-Review Closure Complete`; package version is `0.2.0` and v0.2 is not released.
 
 ## Task 20 v0.2 integration surface
 
 Task 20 adds exactly nine approved integration symbols. They describe the
-final opt-in v0.2 public surface; the current package remains `0.1.0`, and
-these nine names are not yet active root exports until the final public-surface
-gate.
+final opt-in v0.2 public surface; the current package is `0.2.0`, and these
+nine names are active root exports.
 
 ```text
 V02ScoreValidationRequest
@@ -811,6 +810,6 @@ The opt-in CLI command is `sharper v02-run INPUT --output OUTPUT`. It uses
 only the approved policy/warning JSON, score, audit, format, overwrite, and
 input options documented in the [v0.2 integration guide](v02-integration-guide.md).
 Exit codes are `0` success, `2` caller/validation errors, `3` filesystem I/O,
-and `70` unexpected internal errors. The current package is still `0.1.0` and
-v0.2 is not released. See [release readiness](release-readiness.md) for the
+and `70` unexpected internal errors. The current package is `0.2.0` and v0.2
+is not released. See [release readiness](release-readiness.md) for the
 version, root-export, examples, distribution, and CI gates.

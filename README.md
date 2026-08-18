@@ -106,8 +106,9 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 
 ## 当前状态
 
-**状态：v0.1 已实现，Task 14 发布准备已完成。** Tasks 01–14 已完成；本地验证和
-CI 门禁已就绪，尚未发布到 PyPI。
+**状态：v0.2 Task 20 I6 implementation complete；Full Implementation Review 待执行。**
+Tasks 01–19 已完成；Task 20 的 public surface、版本、examples、distribution 和 CI
+实现已接入，尚未执行最终 implementation review，也尚未发布到 PyPI。
 
 v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
 opt-in 二分类风险验证 API 与 Task 16 opt-in data audit 已实现并通过 review；Task 17
@@ -115,9 +116,9 @@ opt-in decision-strategy simulation 已实现并通过 review；Task 18 opt-in p
 warning/lifecycle monitoring implementation 已完成，唯一一次 full implementation review 与
 bounded implementation closure 已通过，final validation 已完成。
 Task 19 的 explainability/governance API 已完成；Task 20 的 opt-in integration workflow、
-closed JSON carriers、静态 Markdown/HTML report 和 `v02-run` CLI path 已实现。Task 20
-的 final public-surface、版本、examples、distribution 和 CI readiness gates 仍需完成，
-因此 v0.2 整体尚未发布。当前 package version 仍为 `0.1.0`。
+closed JSON carriers、静态 Markdown/HTML report、`v02-run` CLI path、nine root exports、
+synthetic examples、sdist boundary 和 CI gates 已实现。当前 package version 为 `0.2.0`；
+Task 20 尚待最终 implementation review，v0.2 尚未发布。
 
 ## Opt-in v0.2 integration (Task 20)
 
@@ -132,9 +133,10 @@ Task 17 policy 和 Task 18 warning 配置可通过两个 versioned closed JSON c
 CLI 入口为 `sharper v02-run`。JSON 不接受 YAML/TOML、Python 配置、函数、脚本、模板、
 include、URL、`$ref`、环境变量或路径展开。
 
-这是 v0.2 的 approved integration surface，仍保持 v0.1 的 `run_analysis`、
+这是 v0.2 的 active approved integration surface，仍保持 v0.1 的 `run_analysis`、
 `generate_analysis_report`、`sharper analyze` 和既有 exports 兼容。v0.2 release target
-为 `0.2.0`，当前仍是 `0.1.0`，尚未发布，也不表示 production 或 deployment ready。
+为 `0.2.0`，当前源码和 metadata 已切换到该版本；尚未发布，也不表示 production 或
+deployment ready。
 参见 [v0.2 integration guide](docs/v02-integration-guide.md) 和
 [release readiness](docs/release-readiness.md)。
 
@@ -170,8 +172,8 @@ figure = plot_binary_risk_validation(result, kind="gains")
 figure.savefig("gains.png")
 ```
 
-Figure 由 caller 持有并负责保存或关闭。Task 15 只表示该 opt-in 能力已经实现，不代表
-Tasks 18–20、v0.2 workflow/CLI integration 或 v0.2 release 已完成。
+Figure 由 caller 持有并负责保存或关闭。Task 15 仍是 standalone opt-in owner；Task 20
+integration 已在下方单独接入，v0.2 尚未发布。
 
 ## Opt-in 数据质量与泄漏审计（Task 16）
 
@@ -195,7 +197,7 @@ result = audit_data_quality(
 ```
 
 shared condition kernel 是 private implementation，不是 public DSL。Task 16 未接入现有
-workflow、report 或 CLI，也不表示 Tasks 18–20 或 v0.2 release 已完成。
+workflow、report 或 CLI，也不表示 v0.2 已发布或执行任何真实业务动作。
 
 ## Opt-in 贷前决策策略模拟（Task 17）
 
@@ -268,7 +270,7 @@ ordinal 必须对齐。Summary resource gates 按 `monitoring_summary_rows` → 
 → `scenario_comparison_rows` 执行，comparison 上限为 200,000 行。
 
 Task 18 implementation 状态为 `Implementation complete — review Go`；final validation 已完成。
-Task 18 contract 与 AM-04 均为 `Approved — Go`，package version 仍为 `0.1.0`，v0.2 尚未发布。
+Task 18 contract 与 AM-04 均为 `Approved — Go`，package version 当前为 `0.2.0`，v0.2 尚未发布。
 
 ## Opt-in 模型治理（Task 19）
 
@@ -280,8 +282,8 @@ metadata 与 provenance 十张有类型的表，并提供五种只读取结果�
 该能力不读取或执行模型，不自动 promotion、审批或部署，也不提供因果推断、法律公平认证或
 adverse-action notice。结构化 attribution 仅支持 coefficient direction、native importance 和
 预先计算的 holdout/OOF permutation importance。Task 19 implementation 已在 targeted remediation、bounded closure 与
-post-review final validation 后完成，当前为 `Implemented — Post-Review Closure Complete`；package version 仍为
-`0.1.0`，v0.2 尚未发布。
+post-review final validation 后完成，当前为 `Implemented — Post-Review Closure Complete`；package version 为
+`0.2.0`，v0.2 尚未发布。
 
 ### Development environment
 
@@ -319,7 +321,7 @@ python -m pip install -e ".[dev]"
 从构建产物安装而不依赖源码 checkout：
 
 ```bash
-python -m pip install dist/sharper-0.1.0-py3-none-any.whl
+python -m pip install dist/sharper-0.2.0-py3-none-any.whl
 ```
 
 Sharper 支持 Python 3.10+，使用 `src` layout。运行时依赖为 pandas、

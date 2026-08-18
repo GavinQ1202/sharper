@@ -50,4 +50,5 @@ recompute domain statistics.
 `V02WorkflowResult` stores the typed owner results, fixed path status, call
 trace, warnings, and limitations. It does not retain the primary raw DataFrame
 or the optional audit reference. The v0.2 workflow is opt-in and the current
-package remains `0.1.0`; v0.2 has not been released.
+package metadata is `0.2.0`; the final implementation review is still
+pending and v0.2 has not been released.
