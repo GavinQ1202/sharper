@@ -1,14 +1,17 @@
 # Task 20 — v0.2 Integration and Release Readiness 精确合同
 
-**Contract 状态：Approved — Go as amended by Governance Amendments A1 + A2。**
-**Implementation 状态：Not Started。**
+**Contract 状态：Approved — Go as amended by Governance Amendments A1 + A2 + A3。**
+**Implementation 状态：REPAIRED AND CLOSURE-VALIDATED。**
 **Full Contract Review：NO-GO — Permanently Closed。**
-**Full Implementation Review：Not Yet Executed — Implementation Not Started — quota 1 available。**
+**Full Implementation Review：NO-GO — CONSUMED — quota 0。**
 
-本记录是 Task 20 的冻结合同、C1–C4 targeted fix history 与 post-closure governance
-status sync。合同治理现为 **Complete**，Task20 implementation 仍为 **Not Started**，
-本阶段的 exact three-document commit 即为 approved contract checkpoint。本记录不创建
-源码、测试、CLI、examples、exports、依赖或版本变化，也不授权任何 release action。
+本记录是 Task 20 的冻结合同、C1–C4 targeted fix history、post-closure governance
+status history 与 Governance Amendment A4。合同治理现为 **Complete**，Task20
+implementation 已为 **REPAIRED AND CLOSURE-VALIDATED**；A4 只修正 final post-closure
+user-document truth-sync 的程序性 scope，不修改 semantic contract。历史 exact
+three-document contract checkpoint 继续保留；A4 自身仍只修改三份 governance 文件，
+并授权下一阶段 final sync 使用 exact7。本记录不创建源码、测试、CLI、examples、exports、
+依赖或版本变化，也不授权任何 release action。
 
 ## 1. Authority、baseline 与治理
 
@@ -31,8 +34,8 @@ status sync。合同治理现为 **Complete**，Task20 implementation 仍为 **N
 135cee1dd1fb45d1c7d38ab91249a689940b0caf
 ```
 
-baseline 上 Task 19 已完成，Task 20 尚未开始，package version 为 `0.1.0`。本合同
-只冻结 Task 20，不改写 Task 19 的历史治理语义、76-key error registry、38-entry
+该 baseline 上 Task 19 已完成、Task 20 尚未开始是历史 contract-baseline 状态，package
+version 当时为 `0.1.0`。本合同只冻结 Task 20，不改写 Task 19 的历史治理语义、76-key error registry、38-entry
 owner registry、92-key direction registry、result schemas 或 review history。
 
 Task 20 的唯一一次开放式 Full Contract Review 已完成，历史 verdict 为
@@ -1820,20 +1823,69 @@ This contract-definition stage has completed its own documentation/inventory che
 it does not claim Python tests, Ruff, build, distribution, CLI smoke or implementation
 evidence. Those are implementation and release-readiness gates after contract approval.
 
+### Governance Amendment A4 — Final post-closure user-document truth-sync scope correction
+
+A4 is a bounded procedural governance amendment. It records that the historical Full
+Implementation Review is now `NO-GO — CONSUMED`, `T20-IR-01..04` are `CLOSED`, targeted
+repair is complete, and bounded implementation closure is `PASS`. Those post-I6 lifecycle
+events made four A2-era current-state statements stale in the user-facing documentation.
+
+The mechanical post-closure evidence set is exactly:
+
+| Path | Current statement | Historical/current | Stale after review + repair + closure | Requires final truth sync |
+|---|---|---|---|---|
+| `README.md` | Task20 implementation complete but Full Implementation Review pending | current | yes | yes |
+| `docs/analysis-guide.md` | final implementation review still pending | current | yes | yes |
+| `docs/v02-integration-guide.md` | final implementation review is pending | current | yes | yes |
+| `docs/release-readiness.md` | current terminal claim says Full Implementation Review Pending | current | yes | yes |
+| `docs/quickstart.md` | v0.2 is not released; no review-pending claim | current | no | no |
+| `docs/api.md` | post-review closure/current package facts; no review-pending claim | current | no | no |
+| `docs/leakage.md` | Task20 audit handoff and v0.2 non-release boundary; no review-pending claim | current | no | no |
+
+The evidence set is exact: `STALE_SET = 4`. All four paths are already members of the
+32-entry global Task20 implementation allowlist, so the global allowlist remains exactly
+32 and global path additions are zero. A4 does not amend semantic contract authority:
+A3 `1697dcf14b0e7d1c4fce23b1c1b186d7090f1dd1` remains the sole authoritative semantic
+contract baseline. A4 itself modifies only this decision record, `SPEC.md`, and
+`IMPLEMENTATION_PLAN.md`; it does not modify any user document.
+
+The A4 sufficiency proof is complete: all four stale paths are in global32; exact4 is
+sufficient for final truth restoration; quickstart, API, and leakage require no change;
+no runtime/test/CI/example change is required; and no semantic contract change is required.
+The frozen non-scope inventory remains unchanged: 9 public symbols, 7 dataclasses, 11
+result fields, 28 Task20 errors, 12 resource gates, 2 report formats, 12 report sections,
+9 plot slots, 2 JSON schemas, 5 Task20 examples, 7 sdist examples, global32, and package
+version `0.2.0`.
+
+After a successful A4 checkpoint, the only authorized next stage is
+**TASK20 — POST-REPAIR FINAL STATUS AND USER-DOCUMENT TRUTH SYNC**. Its exact final scope
+is seven paths: the three governance files plus `README.md`, `docs/analysis-guide.md`,
+`docs/v02-integration-guide.md`, and `docs/release-readiness.md`. The latter four have
+narrow authorization to correct only post-review status, repair/closure state, final
+Task20 readiness, `A–X = 24/24 PASS`, and `Release Ready — Not Released` as applicable.
+`docs/quickstart.md`, `docs/api.md`, and `docs/leakage.md` are immutable in that stage.
+No runtime, test, CI, example, `pyproject.toml`, CHANGELOG, version, export, dependency,
+review, finding, release, push, tag, upload, publish, or deploy action is authorized by A4.
+
 Current state is frozen as:
 
 ```text
 Task20 title:                 Task 20 — v0.2 Integration and Release Readiness
 Contract:                     Approved — Go as amended by A1 + A2 + A3
 Contract governance:          Complete
-Implementation:               Not Started
-I1–I5:                        Complete
+Implementation:               REPAIRED AND CLOSURE-VALIDATED
+I1–I6:                        Complete
+Targeted repair:              Complete
+Bounded implementation closure: PASS
 Full Contract Review:         NO-GO — Permanently Closed
-Full Implementation Review:   Not Yet Executed — quota 1 available
-Task20:                       Ready for I6
-Package version:              0.1.0
+Full Implementation Review:   NO-GO — CONSUMED (quota 0)
+T20-IR-01..04:                CLOSED (4 CLOSED / 0 OPEN)
+Affected D/G/J/N/T/U/X:       PASS
+A–X:                          24/24 PASS
+Task20:                       A4 procedural amendment in progress
+Package version:              0.2.0
 Future implementation target: 0.2.0
-Release state:                Not Implemented / Not Released
+Release state:                NOT RELEASED
 Full Contract Review findings: T20-CR-01..15 (P1=15; P0=0; P2=0)
 C1 finding status:            T20-CR-01..05 CLOSED
 C2 finding status:            T20-CR-06..08 CLOSED
@@ -1844,13 +1896,19 @@ Approved checkpoint:          Original three-document commit preserved
 Amended A1 checkpoint:         d0ced4a11257423bc11c442462cd3fff8d000656
 Amended A2 checkpoint:         This exact Governance Amendment A2 commit
 A3 checkpoint:                 This exact Governance Amendment A3 commit
+A4 classification:             Bounded procedural governance amendment only
+A3 semantic authority:         1697dcf14b0e7d1c4fce23b1c1b186d7090f1dd1
 Global implementation allowlist: 32
-I6 exact scope:                21
+I6 exact scope:                21 (complete)
+Final sync scope after A4:     exact7
+A4 own scope:                  exact3 governance files (count 3)
+Added final-stage paths:       README.md; docs/analysis-guide.md; docs/v02-integration-guide.md; docs/release-readiness.md
 Second Full Contract Review:  Forbidden
-Next stage:                   TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS AS AMENDED BY A1 + A2 + A3
+Next stage:                   TASK20 — POST-REPAIR FINAL STATUS AND USER-DOCUMENT TRUTH SYNC (EXACT7 FINAL CHECKPOINT)
 ```
 
-No implementation file, test, CLI implementation, example, CI workflow, `README.md`,
-`docs/api.md`, `pyproject.toml`, version, export, dependency, push, tag or release is changed
-by this governance amendment. The exact three-document A3 commit is the approved governance
-checkpoint; the authorized 21-file implementation scope begins only in the next stage.
+No implementation file, test, CLI implementation, example, CI workflow, user document,
+`pyproject.toml`, version, export, dependency, push, tag or release is changed by A4.
+The exact three-document A4 commit is a procedural governance checkpoint only; A3 remains
+the semantic contract authority, and the authorized exact7 final truth-sync scope begins
+only in the next stage.

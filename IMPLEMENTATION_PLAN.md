@@ -6,8 +6,8 @@ Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通�
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18 contract已批准为`Approved — Go`，
-final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；
-v0.2 整体尚未完成或发布，当前 package version 仍为 `0.1.0`。
+final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0，A4 正在修正 post-closure user-document truth-sync scope；
+v0.2 implementation 已完成且 closure validated，最终 user-document truth sync 尚待 A4 后执行；release 仍为 `NOT RELEASED`，当前 package version 为 `0.2.0`。
 v0.1 保持以下完整轻量闭环：
 
 ```text
@@ -1293,7 +1293,7 @@ v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完�
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
 且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation。approved checkpoint 后方可开始 Task20 implementation，不得跨 Task 提前实现。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope。Task20 implementation lifecycle 已完成，最终 exact7 truth sync 尚待执行。
 
 **目标**
 
@@ -1338,8 +1338,7 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
 已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；v0.2 整体尚未完成或发布，当前 package
-version 仍为 `0.1.0`。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope；v0.2 已完成实现但尚未发布，当前 package version 为`0.2.0`。
 
 **目标**
 
@@ -1385,8 +1384,7 @@ implementation fixes已完成，第一次bounded implementation closure为`No-Go
 implementation fixes已完成，final bounded implementation closure为`Go`，P0/P1/P2均为`0`。
 Task 17 implementation complete — review Go，后续不得再次执行开放式full implementation review；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`Not Started`且 ready for implementation；v0.2整体尚未完成或发布，当前package version
-仍为`0.1.0`。
+`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope；v0.2实现已完成但尚未发布，当前package version 为`0.2.0`。
 
 **目标**
 
@@ -1544,7 +1542,7 @@ tables。不生成 adverse-action notice、合规认证、因果结论或自动�
 
 ### Task 20 — v0.2 Integration and Release Readiness
 
-**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2 + A3；Full Contract Review NO-GO — Permanently Closed；I1–I5 Complete；I6 Not Started；Task20 Ready for I6。**
+**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2 + A3；Full Contract Review NO-GO — Permanently Closed；Full Implementation Review NO-GO — CONSUMED；I1–I6 Complete；Targeted repair Complete；Bounded implementation closure PASS；Implementation REPAIRED AND CLOSURE-VALIDATED；当前为 BOUNDED GOVERNANCE AMENDMENT A4。**
 
 **合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
@@ -1625,15 +1623,27 @@ CLI、其他 tests、report contract、sections、plots、errors、precedence、
 Figure ownership。A1、A2、`docs/leakage.md`、Full Contract Review closure、Full
 Implementation Review quota 与未发布状态保持不变。
 
-**下一阶段与阻塞条件**
+**Governance Amendment A4（当前）**
 
-第二次 Full Contract Review 为 **Forbidden**。A2 checkpoint 提交后，implementation 可进入
-Wave I6；I6 exact scope 为 21 个文件，并包含 `tests/test_cli.py`、六个 A2-authorized
-post-transition truth-sync docs、以及 A3 reporting repair 与 direct regression。本阶段不修改
-`docs/leakage.md`、其他 user docs、workflow、CLI implementation、其他 tests、examples、CI、
-`pyproject.toml`、version、exports 或 dependencies，
-也不执行 push/tag/release。Targeted fix waves C1–C4 已完成；下一阶段为
-**TASK20 IMPLEMENTATION — WAVE I6 PUBLIC SURFACE, VERSION, DISTRIBUTION AND RELEASE READINESS**。
+A4 是 bounded procedural governance amendment，仅修正 post-closure user-document
+truth-sync scope。Full Implementation Review 已为 `NO-GO — CONSUMED`，quota 为 0，
+`T20-IR-01..04` 已在 targeted repair 与 bounded implementation closure 中全部关闭；
+因此 A2-era 的四个 current-state 文档表述后来变为 stale。机械 evidence set 精确为
+`README.md`、`docs/analysis-guide.md`、`docs/v02-integration-guide.md` 和
+`docs/release-readiness.md`。A4 不改变 semantic contract、runtime、public API、
+error/resource/schema/report/CLI、global32、review history 或 implementation findings。
+A3 继续是唯一 semantic contract authority。
+
+A4 自身只修改三份 governance 文件，并授权下一阶段 final truth sync 使用 exact7：
+`SPEC.md`、`IMPLEMENTATION_PLAN.md`、本 decision record，加上上述四份 stale user docs。
+`docs/quickstart.md`、`docs/api.md` 和 `docs/leakage.md` 经机械检查不 stale，必须保持
+immutable。A4 不创建 A5、不重开任何 review、不创建新的 T20-IR finding。
+
+第二次 Full Contract Review 为 **Forbidden**。Targeted fix waves C1–C4、I1–I6、
+targeted repair 与 bounded implementation closure 已完成；A4 成功后的唯一下一阶段为
+**TASK20 — POST-REPAIR FINAL STATUS AND USER-DOCUMENT TRUTH SYNC**，final exact7
+checkpoint。A4 阶段不修改 user docs、runtime、tests、CI、examples、`pyproject.toml`、
+CHANGELOG、version、exports 或 dependencies，也不执行 push/tag/release。
 
 ```text
 Contract Governance:         Complete — Approved — Go as amended by A1 + A2 + A3
@@ -1642,11 +1652,17 @@ Approved Contract Checkpoint: Original three-document commit 4a6fec677fab5b152ef
 Amended Contract Checkpoint:  A1 commit d0ced4a11257423bc11c442462cd3fff8d000656
 A2 Checkpoint:                This exact Governance Amendment A2 commit
 A3 Checkpoint:                This exact Governance Amendment A3 commit
-Current Package Version:     0.1.0
+Current Package Version:     0.2.0
+Implementation State:        REPAIRED AND CLOSURE-VALIDATED
+Full Implementation Review: NO-GO — CONSUMED (quota 0)
 Implementation Target:       0.2.0
 Global Implementation Allowlist: 32 exact tracked files
-I6 Scope:                    21 exact tracked files, including six A2 docs and two A3 repair paths
+I6 Scope:                    21 exact tracked files, completed
+Final sync scope:            exact7 after A4: three governance files plus four stale user docs
+A4 own scope:                exact3 governance files (count 3)
 Task20 Release Goal:         Release Ready — Not Released
+Release state:               NOT RELEASED
+A4 status:                   Procedural scope correction; A3 remains semantic authority
 ```
 
 **未来 implementation phases（仅章节级，不提前授权）**
