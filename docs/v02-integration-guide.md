@@ -6,8 +6,10 @@ specifications, static reports, and the `v02-run` command while preserving the
 v0.1 workflow and CLI.
 
 The approved v0.2 surface is active in the current package version `0.2.0`.
-Task 20 remains opt-in; the final implementation review is pending and v0.2
-is not released.
+Task 20 remains opt-in; the Full Implementation Review is `NO-GO — CONSUMED`,
+T20-IR-01..04 are `CLOSED` after targeted repair and bounded implementation
+closure, and the current implementation is `REPAIRED AND CLOSURE-VALIDATED`.
+v0.2 is not released.
 
 ## Architecture
 

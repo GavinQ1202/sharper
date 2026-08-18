@@ -6,8 +6,8 @@ Tasks 01--14 记录 `SPEC.md` 已批准并完成的 v0.1；v0.2 roadmap 已通�
 Task 15 implementation 已完成且 bounded closure review 为 `Go`；Task 16 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`；Task 17 contract 已批准为
 `Approved — Go`，implementation 已完成且 review 为 `Go`。Task 18 contract已批准为`Approved — Go`，
-final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0，A4 正在修正 post-closure user-document truth-sync scope；
-v0.2 implementation 已完成且 closure validated，最终 user-document truth sync 尚待 A4 后执行；release 仍为 `NOT RELEASED`，当前 package version 为 `0.2.0`。
+final bounded contract closure为`Go`，implementation为`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0，A4 procedural amendment 与 final exact7 truth sync 均已完成；
+v0.2 implementation lifecycle 为 `COMPLETE`，release 仍为 `NOT RELEASED`，当前 package version 为 `0.2.0`。
 v0.1 保持以下完整轻量闭环：
 
 ```text
@@ -1293,7 +1293,7 @@ v0.2 roadmap 与 Task 15 contract 均已批准；Task 15 implementation 已完�
 closure review 为 `Go`。Task 16 contract 已批准为 `Approved — Go`，implementation 已完成
 且 review 为 `Go`；Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`。
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope。Task20 implementation lifecycle 已完成，最终 exact7 truth sync 尚待执行。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 procedural amendment 与 final exact7 truth sync 均已完成，Task20 implementation lifecycle 为`COMPLETE`。
 
 **目标**
 
@@ -1338,7 +1338,7 @@ optimizer，不修改 workflow/reporting/CLI。精确 API、结果、错误和�
 Task 15 implementation 已完成且 review 为 `Go`；Task 16 contract 已批准，implementation
 已完成且 review 为 `Go`。Task 17 contract 已批准为 `Approved — Go`，implementation 已完成且 review 为 `Go`；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope；v0.2 已完成实现但尚未发布，当前 package version 为`0.2.0`。
+`Implementation complete — review Go`且 final validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 procedural amendment 与 final exact7 truth sync 均已完成；v0.2 已完成实现但尚未发布，当前 package version 为`0.2.0`。
 
 **目标**
 
@@ -1384,7 +1384,7 @@ implementation fixes已完成，第一次bounded implementation closure为`No-Go
 implementation fixes已完成，final bounded implementation closure为`Go`，P0/P1/P2均为`0`。
 Task 17 implementation complete — review Go，后续不得再次执行开放式full implementation review；
 Task 18 contract已批准为`Approved — Go`，final bounded contract closure为`Go`，implementation为
-`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 正在修正 post-closure user-document truth-sync scope；v0.2实现已完成但尚未发布，当前package version 为`0.2.0`。
+`Implementation complete — review Go`且 final validation 已完成；Task18D-1、Task18D-2a及最终 validation 已完成；Task19 original contract checkpoint已批准为`Approved — Go`，当前amended contract为`Approved — Go v2`，implementation为`Implemented — Post-Review Closure Complete`，Task19为`Complete`；Task20 唯一一次 Full Contract Review 已为`NO-GO — Permanently Closed`，C1–C4 targeted fixes 与 bounded closure 已完成，合同状态为`Approved — Go`，frozen findings 为`T20-CR-01..15`（15 Closed / 0 Open），implementation为`REPAIRED AND CLOSURE-VALIDATED`，Full Implementation Review 为`NO-GO — CONSUMED`且 quota 为 0；A4 procedural amendment 与 final exact7 truth sync 均已完成；v0.2实现已完成但尚未发布，当前package version 为`0.2.0`。
 
 **目标**
 
@@ -1542,7 +1542,7 @@ tables。不生成 adverse-action notice、合规认证、因果结论或自动�
 
 ### Task 20 — v0.2 Integration and Release Readiness
 
-**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2 + A3；Full Contract Review NO-GO — Permanently Closed；Full Implementation Review NO-GO — CONSUMED；I1–I6 Complete；Targeted repair Complete；Bounded implementation closure PASS；Implementation REPAIRED AND CLOSURE-VALIDATED；当前为 BOUNDED GOVERNANCE AMENDMENT A4。**
+**状态：Contract Definition complete；Contract Governance Complete；Approved — Go as amended by Governance Amendments A1 + A2 + A3；Full Contract Review NO-GO — Permanently Closed；Full Implementation Review NO-GO — CONSUMED；I1–I6 Complete；Targeted repair Complete；Bounded implementation closure PASS；Implementation REPAIRED AND CLOSURE-VALIDATED；Final exact7 truth sync Complete；Task20 implementation lifecycle COMPLETE。**
 
 **合同：** `docs/decisions/task20-v02-integration-release-readiness-contract.md`。
 
@@ -1623,7 +1623,7 @@ CLI、其他 tests、report contract、sections、plots、errors、precedence、
 Figure ownership。A1、A2、`docs/leakage.md`、Full Contract Review closure、Full
 Implementation Review quota 与未发布状态保持不变。
 
-**Governance Amendment A4（当前）**
+**Governance Amendment A4（历史程序性修正；final exact7 truth sync 已完成）**
 
 A4 是 bounded procedural governance amendment，仅修正 post-closure user-document
 truth-sync scope。Full Implementation Review 已为 `NO-GO — CONSUMED`，quota 为 0，
@@ -1634,16 +1634,15 @@ truth-sync scope。Full Implementation Review 已为 `NO-GO — CONSUMED`，quot
 error/resource/schema/report/CLI、global32、review history 或 implementation findings。
 A3 继续是唯一 semantic contract authority。
 
-A4 自身只修改三份 governance 文件，并授权下一阶段 final truth sync 使用 exact7：
+A4 自身只修改三份 governance 文件，并授权 final truth sync 使用 exact7；该 final
+truth sync 已完成：
 `SPEC.md`、`IMPLEMENTATION_PLAN.md`、本 decision record，加上上述四份 stale user docs。
 `docs/quickstart.md`、`docs/api.md` 和 `docs/leakage.md` 经机械检查不 stale，必须保持
 immutable。A4 不创建 A5、不重开任何 review、不创建新的 T20-IR finding。
 
 第二次 Full Contract Review 为 **Forbidden**。Targeted fix waves C1–C4、I1–I6、
-targeted repair 与 bounded implementation closure 已完成；A4 成功后的唯一下一阶段为
-**TASK20 — POST-REPAIR FINAL STATUS AND USER-DOCUMENT TRUTH SYNC**，final exact7
-checkpoint。A4 阶段不修改 user docs、runtime、tests、CI、examples、`pyproject.toml`、
-CHANGELOG、version、exports 或 dependencies，也不执行 push/tag/release。
+targeted repair、bounded implementation closure 与 final exact7 truth sync 均已完成。
+Task20 implementation next stage 为 **NONE**。本阶段不执行 push/tag/release。
 
 ```text
 Contract Governance:         Complete — Approved — Go as amended by A1 + A2 + A3
@@ -1658,14 +1657,17 @@ Full Implementation Review: NO-GO — CONSUMED (quota 0)
 Implementation Target:       0.2.0
 Global Implementation Allowlist: 32 exact tracked files
 I6 Scope:                    21 exact tracked files, completed
-Final sync scope:            exact7 after A4: three governance files plus four stale user docs
-A4 own scope:                exact3 governance files (count 3)
+Final sync scope:            exact7 COMPLETE
+A4 own scope:                exact3 governance files (count 3); procedural authority preserved
+A3 semantic authority:       1697dcf14b0e7d1c4fce23b1c1b186d7090f1dd1
+Final truth checkpoint:      this exact final exact7 governance/truth status commit
 Task20 Release Goal:         Release Ready — Not Released
 Release state:               NOT RELEASED
-A4 status:                   Procedural scope correction; A3 remains semantic authority
+A4 status:                   Procedural scope correction complete; A3 remains semantic authority
+Task20 implementation next: NONE
 ```
 
-**未来 implementation phases（仅章节级，不提前授权）**
+**历史 implementation phases（仅章节级，未作为当前 continuation）**
 
 1. contract approval checkpoint 与 exact public surface；
 2. closed JSON adapters、mapping、budgets、stable errors；
@@ -1676,7 +1678,8 @@ A4 status:                   Procedural scope correction; A3 remains semantic au
    clean-install 与 release-readiness evidence；
 7. bounded implementation review、final Task20 Go 和 release-ready-not-released closure。
 
-上述 phases 不表示 implementation 已开始，也不授权跳过 contract review 或扩大 allowlist。
+上述 phases 是历史规划记录，不表示当前仍有 Task20 implementation continuation，也不授权
+跳过 contract review 或扩大 allowlist。
 
 ## 4. 依赖顺序总览
 

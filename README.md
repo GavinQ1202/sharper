@@ -106,9 +106,9 @@ Python 与 CLI 共用同一个 workflow。未显式确认 target 和 task 时，
 
 ## 当前状态
 
-**状态：v0.2 Task 20 I6 implementation complete；Full Implementation Review 待执行。**
+**状态：v0.2 Task 20 I6 implementation complete；Full Implementation Review = NO-GO — CONSUMED。**
 Tasks 01–19 已完成；Task 20 的 public surface、版本、examples、distribution 和 CI
-实现已接入，尚未执行最终 implementation review，也尚未发布到 PyPI。
+实现已接入，唯一一次 Full Implementation Review 已结束，尚未发布到 PyPI。
 
 v0.2 [roadmap contract](docs/decisions/v02-roadmap-contract.md) 已批准。Task 15 的独立、
 opt-in 二分类风险验证 API 与 Task 16 opt-in data audit 已实现并通过 review；Task 17
@@ -118,7 +118,9 @@ bounded implementation closure 已通过，final validation 已完成。
 Task 19 的 explainability/governance API 已完成；Task 20 的 opt-in integration workflow、
 closed JSON carriers、静态 Markdown/HTML report、`v02-run` CLI path、nine root exports、
 synthetic examples、sdist boundary 和 CI gates 已实现。当前 package version 为 `0.2.0`；
-Task 20 尚待最终 implementation review，v0.2 尚未发布。
+Task 20 implementation 为 `REPAIRED AND CLOSURE-VALIDATED`；T20-IR-01..04 已在 targeted
+repair 与 bounded implementation closure 后全部 `CLOSED`（4 CLOSED / 0 OPEN）。当前
+terminal state 为 `Release Ready — Not Released`，v0.2 尚未发布。
 
 ## Opt-in v0.2 integration (Task 20)
 
