@@ -228,7 +228,9 @@ def test_v02_json_unknown_version_field_operator() -> None:
     assert _error(bad_operator) == "sharper task20: json_unknown_operator"
 
 
-def test_v02_json_budget_max_and_max_plus_one() -> None:
+def test_v02_json_budget_max_and_max_plus_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     raw = _text(_policy_document()).encode()
     at_max = raw + b" " * (5_000_000 - len(raw))
     assert adapter.load_policy_json(at_max).config.strategy_key == "policy-a"
@@ -252,6 +254,37 @@ def test_v02_json_budget_max_and_max_plus_one() -> None:
     assert len(adapter.load_warning_json(_text(warning)).config.scenarios) == 10
     warning["scenarios"].append(_warning_document()["scenarios"][0])  # type: ignore[union-attr]
     assert _error(warning, warning=True) == "sharper task20: json_budget"
+
+    object_at_max = _policy_document()
+    synthetic_fields = tuple(
+        f"__budget_member_{index}" for index in range(256 - len(object_at_max))
+    )
+    overflow_field = "__budget_member_overflow"
+    monkeypatch.setattr(
+        adapter,
+        "_POLICY_FIELDS",
+        adapter._POLICY_FIELDS + synthetic_fields + (overflow_field,),
+    )
+    object_at_max.update({field: index for index, field in enumerate(synthetic_fields)})
+    assert len(object_at_max) == 256
+    assert (
+        adapter.load_policy_json(_text(object_at_max)).config.strategy_key == "policy-a"
+    )
+
+    object_at_max[overflow_field] = 0
+    assert len(object_at_max) == 257
+    with pytest.raises(ValueError, match=r"^sharper task20: json_budget$"):
+        adapter.load_policy_json(_text(object_at_max))
+
+
+def test_v02_json_mapping_errors_are_reached_after_validation() -> None:
+    policy = _policy_document()
+    policy["ranking_score_direction"] = "unsupported"
+    assert _error(policy) == "sharper task20: policy_mapping"
+
+    warning = _warning_document()
+    warning["period_unit"] = "fortnight"
+    assert _error(warning, warning=True) == "sharper task20: warning_mapping"
 
 
 def test_v02_json_depth_condition_and_warning_collection_budgets() -> None:

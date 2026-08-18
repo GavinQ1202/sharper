@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 
 import sharper
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 _V01_COMPATIBILITY_EXPORTS = (
     "__version__",
@@ -82,3 +85,51 @@ def test_v01_compatibility_manifest_unchanged() -> None:
         .default
         is True
     )
+
+
+def test_ci_matrix_contains_v02_gates() -> None:
+    ci = (_PROJECT_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert 'python-version: ["3.10", "3.11", "3.12", "3.13"]' in ci
+    assert "python -m pytest" in ci
+    assert "tests/test_distribution.py" in ci
+    assert "python -m ruff check ." in ci
+    assert "python -m ruff format --check ." in ci
+    assert "v02-run --help" in ci
+    assert "v02_score_validation.py" in ci
+    assert "v02_preloan.py" in ci
+    assert "v02_postloan.py" in ci
+    assert "v02_combined_report.py" in ci
+    assert "v02_cli_json.py" in ci
+    assert "matrix.python-version == '3.12'" in ci
+    assert "uv venv .venv" in ci
+    assert "prepare-distribution-offline-cache.py" in ci
+    assert "SHARPER_DISTRIBUTION_OFFLINE_CACHE_ROOT" in ci
+    assert "tests/test_v02_compatibility.py" in ci
+    assert "actions/upload-artifact" not in ci
+    assert "pypa/gh-action-pypi-publish" not in ci
+    assert "action-gh-release" not in ci
+    assert "git tag" not in ci
+    assert "git push" not in ci
+
+
+def test_v02_release_terminal_state_is_not_released() -> None:
+    readiness = (_PROJECT_ROOT / "docs/release-readiness.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Release Ready — Not Released" in readiness
+
+    workflow_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (_PROJECT_ROOT / ".github/workflows").glob("*.yml")
+    )
+    for forbidden in (
+        "actions/upload-artifact",
+        "pypa/gh-action-pypi-publish",
+        "action-gh-release",
+        "git tag",
+        "git push",
+        "twine upload",
+        "deployment",
+    ):
+        assert forbidden not in workflow_text

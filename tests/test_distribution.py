@@ -640,7 +640,7 @@ def _run_sdist_examples(
     assert (combined_output / "v02-combined_assets").is_dir()
 
 
-def test_built_wheel_and_sdist_are_offline_installable(tmp_path: Path) -> None:
+def test_v02_distribution_source_free_smoke(tmp_path: Path) -> None:
     """Build artifacts and smoke isolated installs without ambient dependencies."""
     uv_cache_dir, prepared_manifest = _prepared_cache()
     output_dir = tmp_path / "artifacts"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import fields, replace
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -200,40 +201,107 @@ def test_v02_report_consumes_result_only(tmp_path: Path, monkeypatch) -> None:
         reporting.generate_v02_report(result, tmp_path / "overwrite.md", overwrite=1)  # type: ignore[arg-type]
 
 
-def test_v02_report_asset_budget_is_checked_before_figure_creation(
-    tmp_path: Path, monkeypatch
-) -> None:
-    score = _empty_score()
-    object.__setattr__(
-        score,
-        "gains",
-        pd.DataFrame(
-            [
-                {
-                    "scope": "overall",
-                    "fold_id": pd.NA,
-                    "actual_fraction": 0.5,
-                    "capture": 0.5,
-                    "capture_status": "available",
-                    "capture_reason": pd.NA,
-                    "lift": pd.NA,
-                    "lift_status": "undefined",
-                    "lift_reason": "unavailable",
-                }
-            ],
-            columns=reporting._GAINS_PLOT_COLUMNS,
-        ),
+def _enabled_slots(count: int) -> tuple[reporting._Slot, ...]:
+    owners = ("risk", "governance")
+    return tuple(
+        reporting._Slot(
+            ordinal,
+            f"synthetic_plot_{ordinal}",
+            owners[(ordinal - 1) % len(owners)],
+            "synthetic",
+            "Score Validation" if ordinal == 1 else "Governance",
+            True,
+        )
+        for ordinal in range(1, count + 1)
     )
-    monkeypatch.setattr(reporting, "_REPORT_FIGURE_LIMIT", 0)
+
+
+def test_v02_report_figure_entry_budget_max_and_max_plus_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = _result(enabled=True, score=_empty_score())
+    figures: list[Figure] = []
+
+    def plot(*args, **kwargs) -> Figure:
+        figure = Figure()
+        figures.append(figure)
+        return figure
+
+    monkeypatch.setattr(reporting, "plot_binary_risk_validation", plot)
+    monkeypatch.setattr(reporting, "plot_model_governance", plot)
+    monkeypatch.setattr(reporting, "_slot_plan", lambda *args: _enabled_slots(9))
+
+    artifact = reporting.generate_v02_report(result, tmp_path / "nine.md")
+    assert artifact.path.is_file()
+    assert len(figures) == 9
+    assert len(list((tmp_path / "nine_assets").glob("plot-*.png"))) == 9
+
+    monkeypatch.setattr(reporting, "_slot_plan", lambda *args: _enabled_slots(10))
     monkeypatch.setattr(
         reporting,
         "plot_binary_risk_validation",
-        lambda *args, **kwargs: pytest.fail("budget gate acquired a Figure"),
+        lambda *args, **kwargs: pytest.fail("figure-entry budget acquired a Figure"),
+    )
+    monkeypatch.setattr(
+        reporting,
+        "plot_model_governance",
+        lambda *args, **kwargs: pytest.fail("figure-entry budget acquired a Figure"),
     )
     with pytest.raises(ValueError, match=r"^sharper task20: report_asset_budget$"):
-        reporting.generate_v02_report(
-            _result(enabled=True, score=score), tmp_path / "budget.md"
-        )
+        reporting.generate_v02_report(result, tmp_path / "ten.md")
+    assert not (tmp_path / "ten.md").exists()
+    assert not (tmp_path / "ten_assets").exists()
+    assert not (tmp_path / ".ten.md.sharper-staging").exists()
+    assert not (tmp_path / ".ten_assets.sharper-staging").exists()
+
+
+@pytest.mark.parametrize("observed_size", [64_000_000, 64_000_001])
+def test_v02_report_png_bytes_budget_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    observed_size: int,
+) -> None:
+    result = _result()
+    slot = reporting._Slot(
+        1, "synthetic_png", "risk", "synthetic", "Score Validation", True
+    )
+    figure = Figure()
+    closed: list[int] = []
+    monkeypatch.setattr(reporting, "_slot_plan", lambda *args: (slot,))
+    monkeypatch.setattr(
+        reporting, "plot_binary_risk_validation", lambda *args, **kwargs: figure
+    )
+    original_close = reporting.plt.close
+    monkeypatch.setattr(
+        reporting.plt,
+        "close",
+        lambda value=None: (closed.append(id(value)), original_close(value))[1],
+    )
+    original_stat = Path.stat
+    observed = False
+
+    def observed_stat(self: Path, *, follow_symlinks: bool = True):
+        nonlocal observed
+        if self.name == "plot-001.png" and not observed:
+            observed = True
+            return SimpleNamespace(st_size=observed_size)
+        return original_stat(self, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(Path, "stat", observed_stat)
+    output = tmp_path / f"png-{observed_size}.md"
+
+    if observed_size == 64_000_000:
+        artifact = reporting.generate_v02_report(result, output)
+        assert artifact.path.is_file()
+        assert (tmp_path / f"png-{observed_size}_assets" / "plot-001.png").is_file()
+    else:
+        with pytest.raises(ValueError, match=r"^sharper task20: report_asset_budget$"):
+            reporting.generate_v02_report(result, output)
+        assert not output.exists()
+        assert not (tmp_path / f"png-{observed_size}_assets").exists()
+        assert not (tmp_path / f".png-{observed_size}.md.sharper-staging").exists()
+        assert not (tmp_path / f".png-{observed_size}_assets.sharper-staging").exists()
+    assert closed == [id(figure)]
 
 
 def test_v02_figure_close_asset_order_and_rollback(tmp_path: Path, monkeypatch) -> None:

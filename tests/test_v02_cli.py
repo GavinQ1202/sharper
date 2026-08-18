@@ -8,7 +8,13 @@ import pandas as pd
 import pytest
 from typer.testing import CliRunner
 
+import sharper.data_audit as data_audit
+import sharper.decision_strategy as decision_strategy
+import sharper.lifecycle_monitoring as lifecycle_monitoring
+import sharper.model_governance as model_governance
+import sharper.risk_validation as risk_validation
 import sharper.v02_cli as v02_cli
+import sharper.v02_reporting as reporting
 from sharper import cli
 from sharper.reporting import ReportArtifact
 from sharper.v02_workflow import (
@@ -86,6 +92,64 @@ def _score_args(
         "--positive-label-value",
         label_value,
     ]
+
+
+def test_v02_report_and_cli_do_not_call_domain_owners(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner_calls: list[str] = []
+
+    def owner_spy(name: str):
+        def call(*args, **kwargs):
+            owner_calls.append(name)
+            raise AssertionError(f"direct Task15-19 owner call: {name}")
+
+        return call
+
+    monkeypatch.setattr(risk_validation, "validate_binary_risk", owner_spy("Task15"))
+    monkeypatch.setattr(data_audit, "audit_data_quality", owner_spy("Task16"))
+    monkeypatch.setattr(
+        decision_strategy,
+        "simulate_decision_strategy",
+        owner_spy("Task17"),
+    )
+    monkeypatch.setattr(lifecycle_monitoring, "monitor_lifecycle", owner_spy("Task18"))
+    monkeypatch.setattr(model_governance, "evaluate_governance", owner_spy("Task19"))
+
+    reporting.generate_v02_report(_workflow_result(), tmp_path / "report-boundary.md")
+    assert owner_calls == []
+
+    monkeypatch.setattr(v02_cli, "load_csv", lambda path: _score_frame())
+    workflow_calls: list[V02WorkflowRequest] = []
+    monkeypatch.setattr(
+        v02_cli,
+        "run_v02_workflow",
+        lambda request: workflow_calls.append(request) or _workflow_result(),
+    )
+    report_calls: list[Path] = []
+    monkeypatch.setattr(
+        v02_cli,
+        "generate_v02_report",
+        lambda result, output_path, **kwargs: (
+            report_calls.append(Path(output_path))
+            or ReportArtifact(Path(output_path), kwargs["format"], "title")
+        ),
+    )
+    result = runner.invoke(
+        cli.app,
+        [
+            "v02-run",
+            "input.csv",
+            "-o",
+            str(tmp_path / "cli-boundary.md"),
+            "--audit",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert len(workflow_calls) == 1
+    assert report_calls == [tmp_path / "cli-boundary.md"]
+    assert owner_calls == []
 
 
 def test_v02_python_cli_semantic_config_parity(
